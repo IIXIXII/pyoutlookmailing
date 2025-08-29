@@ -1,0 +1,15 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+{%- if breadcrumb_prepared is defined -%}
+{%- if breadcrumb_prepared.steps|length >1 -%}
+        {%- for step in breadcrumb_prepared.steps %}
+                <li {% if step.active is not none -%} class="active" {% endif -%}><a href="{{step.url}}">{{step.name}}</a></li>
+        {%- endfor %}
+{%- endif -%}
+{%- endif -%}

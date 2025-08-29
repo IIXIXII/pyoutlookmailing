@@ -1,0 +1,19 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+{%- if begin is defined -%}
+<article class="entry-content">
+    <header class="entry-header">
+        <h1 class="entry-title">{{text}}</h1>
+        <div class="entry-meta"></div>
+    </header>
+{%- endif -%}
+
+{%- if end is defined -%}
+</article>
+{%- endif -%}

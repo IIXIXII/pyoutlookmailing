@@ -1,0 +1,14 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+{%- if link is defined %}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: auto;"><tr><td style="border-radius: 3px; background: #ffffff; text-align: center;" class="button-td">
+<a href="{{link.url}}" style="background: {% if color is defined %}{{color}}{% else %}#000091{%- endif %}; border: 15px solid {% if color is defined %}{{color}}{% else %}#000091{%- endif %}; font-family: sans-serif; font-size: 13px; line-height: 110%; text-align: center; text-decoration: none; display: block; border-radius: 3px; font-weight: bold;" class="button-a">
+<span style="color:#ffffff;" class="button-link">&nbsp;&nbsp;&nbsp;&nbsp;{% if link.title is not none -%}{{link.name}}{% endif -%}&nbsp;&nbsp;&nbsp;&nbsp;</span>
+</td></tr></table>
+{% endif -%}

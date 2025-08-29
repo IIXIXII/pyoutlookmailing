@@ -1,0 +1,34 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+
+{# --------------------------------------------------------------------------#}
+{%- macro render_menu(menu, depth) -%}
+
+    {%- for entry in menu %}
+        {%- if entry.children|length !=0  %}
+            <li class="dropdown{% if depth>0 %}-submenu{% endif %} {% if entry.visibility is defined %}visible-{{entry.visibility}}{% endif %}">
+                <a aria-expanded="false" aria-haspopup="true" 
+                   class="dropdown-toggle" data-toggle="dropdown" 
+                   href="{{entry.url or '#'}}" 
+                   role="button">{{entry.name}}</a>
+                   <ul class="dropdown-menu">
+                        {{render_menu(entry.children, depth+1)}}
+                   </ul>
+            </li>
+        {% else %}
+            {# <li class="active" role="presentation">  sur les li de premier niveau #}
+            <li {% if entry.visibility is defined %}class="visible-{{entry.visibility}}"{% endif %}>
+                <a href="{{entry.url or "#"}}" {% if entry.toggle is defined -%} data-toggle="{{entry.toggle}}" {%- endif -%}>{{entry.name}}</a>
+            </li>
+        {% endif -%}
+    {%- endfor -%}
+
+{%- endmacro -%}
+{# -------------------------------------------------------------------------#}
+{{render_menu(menu_general, 0)}}

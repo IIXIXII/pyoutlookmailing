@@ -1,0 +1,17 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+<div class="modal-header">
+    <button data-dismiss="modal" role="close" type="button">
+        <i class="fa fa-close"></i>
+    </button>
+    <h2>{{cookie_modal_title}}</h2>
+</div>
+<div class="modal-body">
+    {{cookie_modal_content|markdown|safe}}
+</div>

@@ -1,0 +1,25 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+{%- if begin is defined %}
+    </div>
+    <section id="{{fresh_uid}}" 
+            {%- if image is defined %}
+            data-background="{{res_root_path}}/{{lib_image[image]}}"
+            {% else %}
+            data-background="{{res_root_path}}/images/guichetEntreprises.jpeg"
+            {%- endif %}
+            class="banner {{color or ''}}">
+    <div class="container">
+{% endif -%}
+
+{%- if end is defined %}
+    </div>
+    </section>
+    <div class="container" >
+{% endif -%}

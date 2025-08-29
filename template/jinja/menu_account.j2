@@ -1,0 +1,17 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+<a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+<span role="label">{{account.menu_name}}</span> <span class="caret"></span></a>
+<ul class="dropdown-menu">
+{%- for link in account.links %}
+    <li {% if link.class is defined -%} class="visible-{{link.class}}" {%- endif -%}>
+        <a href="{{link.url|apply_site_context}}" role="{{link.role}}"  {% if link.toggle is defined -%} data-toggle="{{link.toggle}}" {%- endif -%} >{{link.name}}</a>
+    </li>
+{%- endfor %}
+</ul>

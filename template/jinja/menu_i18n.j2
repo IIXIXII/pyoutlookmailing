@@ -1,0 +1,20 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+{% if i18n is defined %}
+{% if i18n_off is undefined %}
+<a aria-expanded="false" aria-haspopup="true" class="dropdown-toggle" data-toggle="dropdown" href="#" role="button">
+        <span class="flag {{i18n.active}}"> </span><span class="caret"></span>
+</a>
+    <ul class="dropdown-menu">
+{%- for lang in i18n.langs %}
+        <li><a href="{{lang.url}}"><span class="flag {{lang.code}}"> </span>{{lang.name}}</a></li>
+{%- endfor %}
+    </ul>
+{% endif %}
+{% endif %}

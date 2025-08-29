@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="utf-8"> <!-- utf-8 works for most cases -->
+    <meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
+    <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
+    <title></title> <!-- The title tag shows in email notifications, like Android 4.4. -->
+
+    <!-- Web Font / @font-face : BEGIN -->
+    <!-- NOTE: If web fonts are not required, lines 10 - 27 can be safely removed. -->
+
+    <!-- Desktop Outlook chokes on web font references and defaults to Times New Roman, so we force a safe fallback font. -->
+    <!--[if mso]>
+        <style>
+            * {
+                font-family: sans-serif !important;
+            }
+        </style>
+    <![endif]-->
+
+    <!-- All other clients get the webfont reference; some will render the font and others will silently fail to the fallbacks. More on that here: http://stylecampaign.com/blog/2015/02/webfont-support-in-email/ -->
+    <!--[if !mso]><!-->
+    <!-- insert web font reference, eg: <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'> -->
+    <!--<![endif]-->
+
+    <!-- Web Font / @font-face : END -->
+
+    <!-- CSS Reset : BEGIN -->
+    <style>
+
+        /* What it does: Remove spaces around the email design added by some email clients. */
+        /* Beware: It can remove the padding / margin and add a background color to the compose a reply window. */
+        html,
+        body {
+            margin: 0 auto !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
+        }
+
+        /* What it does: Stops email clients resizing small text. */
+        * {
+            -ms-text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* What it does: Centers email on Android 4.4 */
+        div[style*="margin: 16px 0"] {
+            margin: 0 !important;
+        }
+
+        /* What it does: Stops Outlook from adding extra spacing to tables. */
+        table,
+        td {
+            mso-table-lspace: 0pt !important;
+            mso-table-rspace: 0pt !important;
+        }
+
+        /* What it does: Fixes webkit padding issue. Fix for Yahoo mail table alignment bug. Applies table-layout to the first 2 tables then removes for anything nested deeper. */
+        table {
+            border-spacing: 0 !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+            margin: 0 auto !important;
+        }
+        table table table {
+            table-layout: auto;
+        }
+
+        /* What it does: Uses a better rendering method when resizing images in IE. */
+        img {
+            -ms-interpolation-mode:bicubic;
+        }
+
+        /* What it does: A work-around for email clients meddling in triggered links. */
+        *[x-apple-data-detectors],  /* iOS */
+        .x-gmail-data-detectors,    /* Gmail */
+        .x-gmail-data-detectors *,
+        .aBn {
+            border-bottom: 0 !important;
+            cursor: default !important;
+            color: inherit !important;
+            text-decoration: none !important;
+            font-size: inherit !important;
+            font-family: inherit !important;
+            font-weight: inherit !important;
+            line-height: inherit !important;
+        }
+
+        /* What it does: Prevents Gmail from displaying a download button on large, non-linked images. */
+        .a6S {
+            display: none !important;
+            opacity: 0.01 !important;
+        }
+        /* If the above doesn't work, add a .g-img class to any image in question. */
+        img.g-img + div {
+            display: none !important;
+        }
+
+        /* What it does: Prevents underlining the button text in Windows 10 */
+        .button-link {
+            text-decoration: none !important;
+        }
+
+        /* What it does: Removes right gutter in Gmail iOS app: https://github.com/TedGoas/Cerberus/issues/89  */
+        /* Create one of these media queries for each additional viewport size you'd like to fix */
+
+        /* iPhone 4, 4S, 5, 5S, 5C, and 5SE */
+        @media only screen and (min-device-width: 320px) and (max-device-width: 374px) {
+            .email-container {
+                min-width: 320px !important;
+            }
+        }
+        /* iPhone 6, 6S, 7, 8, and X */
+        @media only screen and (min-device-width: 375px) and (max-device-width: 413px) {
+            .email-container {
+                min-width: 375px !important;
+            }
+        }
+        /* iPhone 6+, 7+, and 8+ */
+        @media only screen and (min-device-width: 414px) {
+            .email-container {
+                min-width: 414px !important;
+            }
+        }
+        .small {
+            margin: 0;
+            margin-bottom: 10px;
+            color: #161616;
+            font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 20px;
+            margin: 0;
+            margin-bottom: 10px;
+            padding: 0;
+            text-align: left;
+          }
+      
+          hr {
+            background-color: #e5e5e5;
+            border: none;
+            height: 1px;
+          }
+
+          .blacklink {
+            Margin: default;
+            color: #161616;
+            font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+            font-weight: 400;
+            line-height: 1.35;
+            margin: default;
+            padding: 0;
+            text-align: left;
+            text-decoration: underline;
+          }
+
+          .container {
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-collapse: collapse;
+            border-spacing: 0;
+            float: none;
+            margin: 0 auto;
+            padding: 0;
+            text-align: center;
+            vertical-align: top;
+            width: 580px;
+            -moz-box-sizing: border-box;
+            -moz-hyphens: none !important;
+            -webkit-box-sizing: border-box;
+            -webkit-hyphens: none !important;
+            Margin: 0;
+            border-collapse: collapse !important;
+            box-sizing: border-box;
+            color: #141414;
+            font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+            font-size: 18px;
+            font-weight: 400;
+            hyphens: none !important;
+            line-height: 1.35;
+            margin: 0;
+            padding: 0;
+            padding-bottom: 70px;
+            padding-left: 65px;
+            padding-right: 65px;
+            padding-top: 70px;
+            text-align: left;
+            vertical-align: top;
+            word-wrap: break-word;
+          }
+
+          .title {
+            margin: 0;
+            margin-bottom: 10px;
+            color: #000091;
+            font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.35;
+            margin: 0;
+            margin-bottom: 10px;
+            padding: 0;
+            padding-bottom: 15px;
+            text-align: left;
+            word-wrap: normal;
+          }
+      
+          .content {
+            margin: 0;
+            margin-bottom: 10px;
+            color: #141414;
+            font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+            font-size: 18px;
+            font-weight: 400;
+            line-height: 1.5em;
+            margin: 0;
+            margin-bottom: 10px;
+            padding: 0;
+            text-align: left;
+            padding-bottom: 15px;
+          }
+          
+    </style>
+    <!-- CSS Reset : END -->
+
+    <!-- Progressive Enhancements : BEGIN -->
+    <style>
+
+    /* What it does: Hover styles for buttons */
+    .button-td,
+    .button-a {
+        transition: all 100ms ease-in;
+    }
+    .button-td:hover,
+    .button-a:hover {
+        background: #555555 !important;
+        border-color: #555555 !important;
+    }
+
+    /* Media Queries */
+    @media screen and (max-width: 600px) {
+
+        /* What it does: Adjust typography on small screens to improve readability */
+        .email-container p {
+            font-size: 17px !important;
+        }
+
+    }
+
+    </style>
+    <!-- Progressive Enhancements : END -->
+
+    <!-- What it does: Makes background images in 72ppi Outlook render at correct size. -->
+    <!--[if gte mso 9]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:AllowPNG/>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
+
+</head>
+<!--
+	The email background color (#222222) is defined in three places:
+	1. body tag: for most email clients
+	2. center tag: for Gmail and Inbox mobile apps and web versions of Gmail, GSuite, Inbox, Yahoo, AOL, Libero, Comcast, freenet, Mail.ru, Orange.fr
+	3. mso conditional: For Windows 10 Mail
+-->
+<body width="100%" bgcolor="#FFF" style="margin: 0; mso-line-height-rule: exactly;">
+    <center style="width: 100%; background: #FFF; text-align: left;">
+    <!--[if mso | IE]>
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#FFF">
+    <tr>
+    <td>
+    <![endif]-->
+
+        <!-- Visually Hidden Preheader Text : BEGIN -->
+        <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
+            {{ summary }}
+        </div>
+        <!-- Visually Hidden Preheader Text : END -->
+
+        <!-- Create white space after the desired preview text so email clients don=E2=80=99t pull other distracting text into the inbox preview. Extend as necessary. -->
+        <!-- Preview Text Spacing Hack : BEGIN -->
+        <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
+	        &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+        </div>
+        <!-- Preview Text Spacing Hack : END -->
+
+        <!--
+            Set the email width. Defined in two places:
+            1. max-width for all clients except Desktop Windows Outlook, allowing the email to squish on narrow but never go wider than 600px.
+            2. MSO tags for Desktop Windows Outlook enforce a 600px width.
+        -->
+        <div style="max-width: 800px; margin: auto;" class="email-container">
+            <!--[if mso]>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center">
+            <tr>
+            <td>
+            <![endif]-->
+
+            <!-- Email Body : BEGIN -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 800px;">
+
+                <!-- Hero Image, Flush : BEGIN -->
+                <tr><td bgcolor="#ffffff" align="center">
+<img src="data:image/png;base64,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"/>
+                </td></tr>
+                <tr>
+                    <td style="direction:ltr;font-size:0px;padding:0;text-align:center;">
+                      <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="container-outlook" style="vertical-align:top;width:600px;" ><![endif]-->
+                      <div class="mj-column-per-100 mj-outlook-group-fix container" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
+                        <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="vertical-align:top;" width="100%">
+                          <tbody>
+                            <tr>
+                              <td align="left" style="font-size:0px;padding:0;word-break:break-word;">
+                                <div style="font-family:Ubuntu, Helvetica, Arial, sans-serif;font-size:13px;line-height:1;text-align:left;color:#000000;">
+                                  <p class="content">{{content | safe}}</p>
+                                </div>
+                              </td>
+                            </tr>
+                            
+                            <tr>
+                              <td align="left" style="font-size:0px;padding:0;word-break:break-word;">
+                                <div style="font-family:Ubuntu, Helvetica, Arial, sans-serif;font-size:13px;line-height:1;text-align:right;color:#000000;">
+                                  <p class="small">{% if author is defined %}{{author}}{% else %}Florent TOURNOIS{% endif %}<br/>
+                                  <i  style="font-size:10px;color:#B8B8B8;">{% if role is defined %}{{ role }}{% else %}Directeur de projet{% endif %}</i></p>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <!--[if mso | IE]></td></tr></table><![endif]-->
+                    </td>
+                  </tr>
+                <tr>
+                    <td style="font-size:0px;word-break:break-word;">
+                      <div style="height:20px;line-height:20px;">&#8202;</div>
+                    </td>
+                  </tr>
+                <tr>
+                    <td bgcolor="#ffffff" align="center">
+                        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAA3CAYAAAD0Sy7WAAAACXBIWXMAAAhdAAAIXQFonDFLAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAABNBJREFUeJzt3V9olWUcwPHfOXPuOP+taQpiOVqYGykoJYhIqAi7kSiMIqLSboZgCFF4oehV0EUQmRcNScIrrxL/QEVKoGWRCFmjFIn+aG6km5ZbW9s5bzcllDW33B47Z5/P3Tl73/f8dvnlPM95clmWFQMAACCB/O0eAAAAGD8ECAAAkIwAAQAAkhEgAABAMgIEAABIRoAAAADJCBAAACAZAQIAACQjQAAAgGQECAAAkIwAAQAAkhEgAABAMgIEAABIRoAAAADJCBAAACAZAQIAACQjQAAAgGQm3O4BABh9ra1H81k2+s+dPbs2Nmxozhoapv3j30s/XYqrL7+aK164eOsflsvFzH17Srf+IAD+T3JZlhVv9xAAjK58/vVRD5CVK+fGgQNrY8qU6iGv6z/+SXSuaLn1D8zl4u5StwABqDCWYAFwU3V1NbF79+qbxkfW0xvX3tqbaCoAypEAAWBIuVzEgQNr4557pt/82sm1Uf/mazH1+dYEkwFQjgQIAEN65JHGWLFizrCvz1VXx8BXZ8ZwIgDKmQABYEiLFs0c8T21jz86BpMAUAn8ChYAQzp79sqIru/u7o7cwuYxmgaAcucbEACGdPJk57Cv7e3tjVOnTsWF/r4xnAiAciZAALhu+vSJN7x37tzVOH360rDuLxQKUV9fH03Ll0XNimWjPR4AFcA5IAAVaKTngEydOjG2bn0w3nvvu1i4cGYUClVRLGZx4sTFOHPmSjz7bFO88sryyOdzw37mQPvXcXHhsoj/eiCJc0AAKpI9IADj3IwZhWhrWx27dn0emzcvjvnz66Kuribq6mqiujofHR29MWfO5BE/97fPv4ioqooYHByDqQEoV5ZgAYxjhUJVbNnyQGza9GHceWdtrFw5Nz7++GK8+OLxeOGFY3H+/LW4fLkvPvts+PtA/vTrO4fEBwA38A0IwDi2YEF9bNnyURSLWUyaVBVTplTH+vXN8cwzTbF7d3s0Nr4dDQ3T4uTJJ0b24FIpBr8/PzZDA1DWBAjAOHb69KUolbJoaZkXixfPiieffDfmzZsWbW1fRldXX6xZc3ccPLg22tsvx5Ils6JUyoa9D2Tgi/Yxnh6AcmQTOkAFGukm9Pr6QnR1/fWnc9evb46WlnnR2dkbq1bNjUOHvo3Gxumxbt29N9xf7OiMn9Y+EaWrP8fE+5ui1NMbfe8fvbV/wiZ0gIokQAAq0EgDpKFhWjz22L2xf/830dHRG089dV/09AxGoVAV/f3FOHbsx9i+fWk8/XTTP97fveml+OWNtlGa/g8CBKAiWYIFMM5VV+dj27alsWPHpzEwUIxVq+bGkSM/XD8BfdKkCbFz50P/Gh8REf3HT6QaF4AyJ0AAxrksi3juuQ+uvz58+NsYHCzFhAn52LChObZufTDuumvqkM+oXfdwDH5/Pkpd3WM9LgBlzhIsgArU2np0REuw/q6mpio2blyULVhwx7Dvyfr7o2fvvuh7/+jwTyscSi4XM/ftsQQLoMIIEAAAIBkHEQIAAMkIEAAAIBkBAgAAJCNAAACAZAQIAACQjAABAACSESAAAEAyAgQAAEhGgAAAAMkIEAAAIBkBAgAAJCNAAACAZAQIAACQjAABAACSESAAAEAyAgQAAEhGgAAAAMn8DlMdMPeGtLVrAAAAAElFTkSuQmCC" width="100%"/>
+                    </td>
+                </tr>
+                <!-- Hero Image, Flush : END -->
+    <!--[if mso | IE]>
+    </td>
+    </tr>
+    </table>
+    <![endif]-->
+    </center>
+</body>
+</html>

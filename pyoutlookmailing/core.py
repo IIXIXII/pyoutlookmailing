@@ -260,7 +260,9 @@ def email_excel_list(xl_filename, xl_column, folders = ['./']):
     "Read excel column email list"
     logging.info("Read excel file '%s' column '%s'",xl_filename, xl_column)
     result=[]
-    filename=common.search_for_file(xl_filename,folders,['./','excel','xl'],2)
+    filename=common.search_for_file(xl_filename,
+                                    folders,
+                                    [os.getcwd(),'./','excel','xl'],2)
     xl_list = pd.read_excel(filename)
 
     columns = []

@@ -60,7 +60,7 @@ def get_parser_for_command_line():
                         type=is_real_file,
                         help="the configuration file in yaml", metavar="FILE")
     parser.add_argument('--send-mail', dest="send_mail", required=False,
-                        choices=['yes', 'no'], default='no',
+                        choices=['yes', 'no', 'conf'], default='conf',
                         help="Send email or just draft")
     parser.add_argument('--windows', action='store_true', dest='windows',
                         help='Define if we need all popups windows.')
@@ -129,11 +129,9 @@ def __main():
         logging.info("send_mail=%s", repr(args.send_mail))
         logging.info("verbose=%s", args.verbose)
 
-        args.send_mail_bool = (args.send_mail == "yes")
-
         conf = pyom.load_conf(args.conf_filename, __get_this_folder())
-        conf = pyom.compute_conf(conf)
-
+        conf = pyom.compute_conf(conf, args)
+        pyom.send_email(conf)
 
     except argparse.ArgumentError as errmsg:
         logging.error(str(errmsg))

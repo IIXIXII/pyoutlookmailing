@@ -217,7 +217,9 @@ def read_yaml(filename):
 def load_conf(filename, folder = "./"):
     "Read a conf file and return the dict"
     logging.debug('Load the configuration file: %s', filename)
-    filename=common.search_for_file(filename,[folder],['./','conf'],2)
+    run_folder = os.getcwd()
+    filename=common.search_for_file(filename,
+                                    [run_folder, folder],['./','conf'],2)
     result = {}
 
     filename = os.path.abspath(filename)
@@ -231,10 +233,15 @@ def load_conf(filename, folder = "./"):
     return result
 
 # -----------------------------------------------------------------------------
-def compute_conf(conf):
+def compute_conf(conf, cmd_line_args=None):
     conf = read_excel_list(conf)
     conf = read_content_filename(conf)
 
+    if cmd_line_args is not None:
+        if cmd_line_args.send_mail != "conf":
+            conf['really_send']= (cmd_line_args.send_mail=="yes")
+            logging.info('The command line override the conf parameter '
+                         'Send_mail = %s', repr(conf['really_send']))
 
     env = genenv.GenerationEnvironment(conf)
     conf = txt2html(conf, env)
@@ -337,6 +344,7 @@ def txt2html(conf, env):
             txt = conf[key]["content"]["txt"]
             conf[key]['content'] = \
                 md2html(txt, env, conf[key])
+            # print(conf[key]['content'])
     return conf
 
 # -----------------------------------------------------------------------------

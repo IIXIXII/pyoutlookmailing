@@ -96,12 +96,12 @@ REM ----------------------------------------------------------------------------
     exit /b
 )
 REM -------------------------------------------------------------------------------
-:PYTHON_LAUNCH <filename>
+:PYTHON_LAUNCH <filename> <arg>
 (
     SET "PY_FILE=%~1"
     SETLOCAL EnableDelayedExpansion
-    CALL :PRINT_LINE "   python !PY_FILE!" 
-    python !PY_FILE!
+    CALL :PRINT_LINE "   python !PY_FILE! %~2" 
+    python !PY_FILE! %~2 
     exit /b
 )
 :EOF

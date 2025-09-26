@@ -335,6 +335,7 @@
                                         <tr>
                                             <td class="darkmode-border email-content" style="border: 1px solid #e5e5e5;padding: 70px 65px 70px 65px;">
                                                 <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                                    {{content | safe}}
                                                     <tr>
                                                         <td>
                                                             <h2 style="margin: 0;margin-bottom: 10px;color:#000091;font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size: 32px;line-height: 1.35;margin-bottom: 10px;padding-bottom: 15px;">Confirmer un nouvel appareil</h2>
@@ -343,60 +344,6 @@
                                                     <tr>
                                                         <td>
                                                             <p style="margin: 0;margin-bottom: 10px;color: #141414;font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size: 18px;line-height: 1.5em;margin-bottom: 10px;padding-bottom: 15px;">Un nouvel appareil a été associé à votre compte :</p>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td style="padding-bottom: 25px;">
-                                                            <table align="left" role="presentation" cellspacing="0" cellpadding="0" border="0">
-                                                                <tr>
-                                                                    <td style="padding:0 10px">
-                                                                        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAABCCAYAAAAlkZRRAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAE6SURBVHgB7drhTcJQGIXhI3GAOoGMgBvUDRiBDWSDlgkcoXEEJ7Ab4AbFCXQD/a5tQ0Nyb0jPTfORnDc5prHk8hB+UuAGW9tebZ3td6Edbc3w3sleFkTFVsVwlQNcFLlzhBu3nQI7h8BuxJUOcePKlf3ZwG+bACzgt2IF56WAB9vdQjvMAbpIQDYB2QRkE5BNQDYB2QRkE5BNQDYB2QRkE5BNQDYB2QRkE5BNQDYB2QRkE5DtPnGvQuLX76XSV8yWC9janm0P6H8cDNefyFAO4Bt6UGv7Gf4Xrp+Ge1Qs8GSrE/f3OKNnxQJb9MhYAfcOIhb4dcVrTiAKQOYreMz0mlj/thLzHxv5RvqhjDW4Z3LK8SDmkCYBbIhzu+lBW+KgsOPk0xbD9Qd55u7y09bkgTlXI5IH5H4K+gN9S4YMBLcZ5QAAAABJRU5ErkJggg==" class="display-only-in-light-mode" width="26" height="43" alt="" border="0" style="font-size: 15px; line-height: 15px; color: #555555;" aria-hidden="true">
-                                                                        <!--[if !mso]><!-->
-                                                                        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAABCCAYAAAAlkZRRAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAAFiUAABYlAUlSJPAAAAF5SURBVGhD7ZrxUcIwFMYbJ8AJ1A1wA9iAEdhANgAmcASOEZxANtAN0A3YoHwfeah3JUXzeW169353rwlN0vxI2r/yqiFyj3hG7OuOwFxviI3N3cqTjekNOCyjSpOl9ekdukSlb+bWVgxwmlEs8AL4vl3d/y4JIXygeLjBZVKaHDGnCQXHpztlMqbgKNaLZETBokkK4iVdI7pibdM2GO4KloILqrigiguquKCKC6q4oIoLqrigiguquKCKC6q4oIoLqrigiguquKCKC6q4oIoLqgxXsK7rLg+4k6fsvsUq/yIYQtghpohbngwC1t+tWUIWhMgWxRSxQxx4D7D+aG0SkiAEmFewir8uskCfs3QW6gpypSiZgnIvsZqHKvhpZRttf+AqFFS24M7KNn7TJ8WBgsrXxuSbtqSMU2pJrGbx5ZadSIaxTApLsbFufwZj9/ERkZndzwLjmb12XimuKOuv1pwFxs/5sJ+srK136BKVmvQuCYdFVCFVdQQuZokQikravQAAAABJRU5ErkJggg==" class="display-only-in-dark-mode"  width="26" height="43" alt="" border="0" style="display:none;font-size: 15px; line-height: 15px; color: #555555;" aria-hidden="true">
-                                                                        <!--<![endif]-->
-                                                                    </td>
-                                                                    <td>
-                                                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                                                                            <tr>
-                                                                                <td>
-                                                                                    <p style="margin:0;font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size: 18px;">Nom de l’appareil : <strong>%DEVICENAME%</strong></p>
-                                                                                </td>
-                                                                            </tr>
-                                                                            <tr>
-                                                                                <td>
-                                                                                    <p style="margin:0;font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size: 18px;">Modèle : <strong>%DEVICEMODEL%</strong></p>
-                                                                                </td>
-                                                                            </tr>
-                                                                        </table>
-                                                                    </td>
-                                                                </tr>
-                                                            </table>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>
-                                                            <p style="margin: 0;margin-bottom: 10px;padding-bottom: 15px;;font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size: 18px;">Pour confirmer cliquez sur le bouton ci-dessous : </p>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>
-                                                            <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: auto;">
-                                                                <tr>
-                                                                    <td class="darkmode-button" style="color:#ffffff;background: #000091;text-align: center;">
-                                                                        <a class="darkmode-button" href="%OTL%" style="background: #000091; border: 1px solid #000000; font-family: sans-serif; font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size: 15px; line-height: 15px; text-decoration: none; padding: 13px 17px; color: #ffffff; display: block; ">Confirmer ce nouvel appareil</a>
-                                                                    </td>
-                                                                </tr>
-                                                            </table>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td aria-hidden="true" height="20" style="font-size: 0px; line-height: 0px;">
-                                                            &nbsp;
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td>
-                                                            <p class="small" style="color: #161616;font-family: Marianne, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;font-size: 12px !important;line-height: 20px;margin: 0;margin-bottom: 10px;">Vous pouvez également copier le lien suivant dans votre navigateur : <a href="%OTL%" class="darkmode-link" style="color: #0063cb;text-decoration: none;">%OTL%</a></p>
                                                         </td>
                                                     </tr>
                                                 </table>

@@ -373,47 +373,111 @@ class RendererDefault(JinjaEnvManagment):
             context['link-model'] + ".j2").render(context)
 
 
-
 ###############################################################################
 # An object to wrap the mistune render
 ###############################################################################
-class RendererLink(ContextManagment, JinjaEnvManagment):
+class RendererFi(RendererDefault, ContextManagment):
 
     ###########################################################################
-    # init the link renderer
-    ###########################################################################
-    def __init__(self, jinja_env, context, default_link="normal"):
-        JinjaEnvManagment.__init__(self, jinja_env)
-        ContextManagment.__init__(self, context)
-        self.__default_link = default_link
-
-    ###########################################################################
-    # Rendering a given link with content and title.
+    # generate a renderer
     #
-    # @param link: href link for ``<a>`` tag.
-    # @param title: title content for `title` attribute.
-    # @param text: text content for description.
+    # @return the renderer
     ###########################################################################
-    def link(self, link, title, text):
+    @staticmethod
+    def generate(**kwargs):
+        return RendererFi(jinja_env=kwargs['jinja_env'],
+                          context=kwargs['context'])
+
+    ###########################################################################
+    # register the renderer
+    ###########################################################################
+    __register = \
+        RendererGenerator.register('model:fi', generate.__func__) and \
+        RendererGenerator.register('model-fi', generate.__func__)
+
+    ###########################################################################
+    # init the callapsable
+    ###########################################################################
+    def __init__(self, jinja_env, context):
+        RendererDefault.__init__(self, jinja_env)
+        ContextManagment.__init__(self, context)
+
+    ###########################################################################
+    # Rendering header/heading tags like ``<h1>`` ``<h2>``.
+    #
+    # @param text: rendered text content for the header.
+    # @param level: a number for the header level, for example: 1.
+    # @param raw: raw text content of the header.
+    ###########################################################################
+    def header(self, text, level, raw=None):
         self.instructions = read_instructions(text)
         text = strip_xml_comment(text)
         context = self.context
-        context['link'] = {'url': mistune.escape_link(link), 'name': text}
 
-        if title is not None:
-            context['link']['title'] = title
+        context['level'] = level
+        context['text'] = text
 
-        if 'normal-link' in context:
-            return self.jinja_env.get_template(
-                "link_normal.j2").render(context)
+        (begin, end) = get_render_couple(
+            self.jinja_env.get_template("fi_header.j2"), context)
 
-        link_model = self.__default_link
+        self.del_instructions()
+        return (begin, '')
 
-        if 'link-model' in context:
-            link_model = context['link-model']
+    ###########################################################################
+    # Rendering paragraph tags. Like ``<p>``.
+    ###########################################################################
+    def paragraph(self, text):
+        inst = read_instructions(text)
+        text = strip_xml_comment(text)
+        context = self.context
 
-        return self.jinja_env.get_template(
-            "link_" + link_model + ".j2").render(context)
+        context['text'] = text.strip(' ')
+        if 'p' not in inst:
+            inst['p']='normal'
+
+        return self.jinja_env.get_template("fi_"+inst['p']+".j2").render(context)
+
+
+# ###############################################################################
+# # An object to wrap the mistune render
+# ###############################################################################
+# class RendererLink(ContextManagment, JinjaEnvManagment):
+
+#     ###########################################################################
+#     # init the link renderer
+#     ###########################################################################
+#     def __init__(self, jinja_env, context, default_link="normal"):
+#         JinjaEnvManagment.__init__(self, jinja_env)
+#         ContextManagment.__init__(self, context)
+#         self.__default_link = default_link
+
+#     ###########################################################################
+#     # Rendering a given link with content and title.
+#     #
+#     # @param link: href link for ``<a>`` tag.
+#     # @param title: title content for `title` attribute.
+#     # @param text: text content for description.
+#     ###########################################################################
+#     def link(self, link, title, text):
+#         self.instructions = read_instructions(text)
+#         text = strip_xml_comment(text)
+#         context = self.context
+#         context['link'] = {'url': mistune.escape_link(link), 'name': text}
+
+#         if title is not None:
+#             context['link']['title'] = title
+
+#         if 'normal-link' in context:
+#             return self.jinja_env.get_template(
+#                 "link_normal.j2").render(context)
+
+#         link_model = self.__default_link
+
+#         if 'link-model' in context:
+#             link_model = context['link-model']
+
+#         return self.jinja_env.get_template(
+#             "link_" + link_model + ".j2").render(context)
 
 ###############################################################################
 # An object to wrap the mistune render

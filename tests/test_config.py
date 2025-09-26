@@ -109,10 +109,11 @@ def __main():
                  sys.version_info[0], sys.version_info[1], sys.version_info[2])
 
     # test_conf("2025-07-25 - Aptitude news.conf")
-    # test_conf("2025-07-25 - Aptitude news FR.conf")
+    test_conf("2025-09-24 - Top up call.conf")
     # test_conf("2025-07-25 - EUDIW Unfold.conf")
-    test_conf("2025-08-27 - Aptitude KO save the date.conf")
-    test_conf("2025-08-27 - Aptitude KO save the date FR.conf")
+    # test_conf("2025-09-10 - Aptitude KO save the date.conf")
+    # test_conf("2025-08-27 - Aptitude KO save the date FR.conf")
+    # test_conf("test_fi2.conf")
 
     # test_convert_img()
 

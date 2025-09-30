@@ -1,0 +1,46 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+{%- if link is defined and link.url -%}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:16px auto; padding:0; border-collapse:collapse;">
+  <tr>
+    <td align="center" class="button-td" style="text-align:center; margin:0; padding:0;">
+      <a href="{{ link.url }}"
+         target="{% if link.target is defined %}{{ link.target }}{% else %}_blank{% endif %}"
+         style="background:{% if color is defined %}{{ color }}{% else %}#11458c{% endif %};
+                border:13px solid {% if color is defined %}{{ color }}{% else %}#11458c{% endif %};
+                border-radius:5px;
+                color:#ffffff;
+                display:block;
+                font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif;
+                font-size:16px;
+                font-weight:bold;
+                line-height:110%;
+                text-align:center;
+                text-decoration:none !important;
+                mso-padding-alt:0 20px;
+                mso-line-height-rule:exactly;">
+        <span class="button-link"
+              style="color:#ffffff; display:inline-block; padding:0 20px; text-decoration:none !important;">
+          {%- if link.title is defined and link.title -%}
+            {{ link.title }}
+          {%- elif link.name is defined and link.name -%}
+            {{ link.name }}
+          {%- else -%}
+            Ouvrir
+          {%- endif -%}
+        </span>
+      </a>
+    </td>
+  </tr>
+  <!-- Espace sous le bouton = ~1 ligne -->
+  <tr>
+    <td style="height:18px; line-height:18px; font-size:0; mso-line-height-rule:exactly;">&nbsp;</td>
+  </tr>
+</table>
+{%- endif -%}

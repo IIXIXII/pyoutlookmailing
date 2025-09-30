@@ -1,0 +1,93 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+{# ===============================================
+  TITRES H1/H2/H3 avec soulignement dégradé (sans reverse)
+  • À utiliser en mode begin/end uniquement :
+    - begin défini → titre + underline
+    - end   défini → underline seul
+  • Paramètres :
+    level: 1|2|3 (def 2)
+    text : contenu du titre
+    mt/mb: marges du titre (px; défauts par niveau)
+    underline: true|false (def true)
+    under_w/under_h/under_radius/under_align: barre (def 240/6/3/'right')
+    c1..c4: couleurs du dégradé (def #1c023d,#4e3568,#7b678e,#a499b3)
+=============================================== #}
+
+{# Palette du dégradé #}
+{%- set c1 = (c1 if c1 is defined else '#1c023d') -%}
+{%- set c2 = (c2 if c2 is defined else '#4e3568') -%}
+{%- set c3 = (c3 if c3 is defined else '#7b678e') -%}
+{%- set c4 = (c4 if c4 is defined else '#a499b3') -%}
+
+{# Niveaux + couleur de titre issue du dégradé #}
+{%- set _lvl = (level if level is defined and level in [1,2,3] else 2) -%}
+{%- if _lvl == 1 -%}
+  {%- set _fz = 28 -%}{%- set _lh = '1.25' -%}{%- set _col = c1 -%}
+  {%- set _dmt = 24 -%}{%- set _dmb = 4 -%}
+{%- elif _lvl == 2 -%}
+  {%- set _fz = 22 -%}{%- set _lh = '1.35' -%}{%- set _col = c2 -%}
+  {%- set _dmt = 20 -%}{%- set _dmb = 2 -%}
+{%- else -%}
+  {%- set _fz = 18 -%}{%- set _lh = '1.45' -%}{%- set _col = c3 -%}
+  {%- set _dmt = 16 -%}{%- set _dmb = 0 -%}
+{%- endif -%}
+{%- set _mt = (mt if mt is defined else _dmt) -%}
+{%- set _mb = (mb if mb is defined else _dmb) -%}
+{%- set _align = (align if align is defined else 'left') -%}
+
+{# Barre soulignée #}
+{%- set _under = (underline if underline is defined else true) -%}
+{%- set _uw = (under_w if under_w is defined else 240) -%}
+{%- set _uh = (under_h if under_h is defined else 3) -%}
+{%- set _ur = (under_radius if under_radius is defined else 3) -%}
+{%- set _ua = (under_align if under_align is defined else 'left') -%}
+
+{# Style Hn #}
+{%- set _hstyle -%}
+margin:{{ _mt }}px 0 {{ _mb }}px 0; padding:0;
+color:{{ _col }};
+font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif;
+font-size:{{ _fz }}px; line-height:{{ _lh }};
+font-weight:700; text-align:{{ _align }};
+mso-line-height-rule:exactly;
+{%- endset -%}
+
+{# Macro : barre dégradée (Outlook-safe) #}
+{%- macro underline_bar() -%}
+  <!--[if mso]>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 {{ _mb }}px 0; border-collapse:collapse;">
+    <tr>
+      <td align="{{ 'right' if _ua=='right' else ('center' if _ua=='center' else 'left') }}">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="{{ _uw }}" style="width:{{ _uw }}px; border-collapse:collapse;">
+          <tr style="height:{{ _uh }}px; line-height:{{ _uh }}px; font-size:0;">
+            <td style="background:{{ c1 }}; width:{{ (_uw*0.25)|int }}px; height:{{ _uh }}px;"></td>
+            <td style="background:{{ c2 }}; width:{{ (_uw*0.25)|int }}px; height:{{ _uh }}px;"></td>
+            <td style="background:{{ c3 }}; width:{{ (_uw*0.25)|int }}px; height:{{ _uh }}px;"></td>
+            <td style="background:{{ c4 }}; width:{{ (_uw*0.25)|int }}px; height:{{ _uh }}px;"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  <![endif]-->
+  <!--[if !mso]><!-->
+  <div style="width:{{ _uw }}px; height:{{ _uh }}px; border-radius:{{ _ur }}px; margin:0 0 {{ _mb }}px 0;
+              {% if _ua=='right' %}margin-left:auto;{% elif _ua=='center' %}margin-left:auto;margin-right:auto;{% endif %}
+              background:linear-gradient(90deg, {{ c1 }} 0%, {{ c2 }} 33%, {{ c3 }} 66%, {{ c4 }} 100%);"></div>
+  <!--<![endif]-->
+{%- endmacro -%}
+
+{# --- Modes de rendu (begin/end) --- #}
+{%- if begin is defined -%}
+  <h{{ _lvl }} style="{{ _hstyle }}">{{ text | safe }}</h{{ _lvl }}>
+  {%- if _under -%}{{ underline_bar() }}{%- endif -%}
+{%- endif -%}
+{%- if end is defined -%}
+{%- endif -%}

@@ -28,16 +28,98 @@ import logging
 import sys
 import os
 import os.path
+import re
 
 import pyoutlookmailing as pyom
 
 # -----------------------------------------------------------------------------
-def parse_all_folder(folders, previous_name = "root"):
-    for folder in folders:
-        next_name = previous_name+" / "+str(folder) 
-        print(next_name + " --> " + str(len(folder.Items)))
-        if len(folder.Folders)>0:
-            parse_all_folder(folder.Folders, next_name)
+def my_super_function(messages,undeliverable):    
+        list_of_undelivered_email_addresses = []
+        last_n_days = dt.datetime.now() - dt.timedelta(days = 25)
+        messages = messages.Restrict("[ReceivedTime] >= '" +last_n_days.strftime('%m/%d/%Y %H:%M %p')+"'")
+        rl= list()
+        pattern = re.compile('To: ".*\n?',re.MULTILINE)       
+        for counter, message in enumerate(messages):
+                message.SaveAs("undeliverable_emails.msg")
+                f = r'some_absolute_path'  
+                try:
+                        msg = extract_msg.Message(f)
+                        print(counter)
+                        if msg.body.find("undeliverable")!= -1 or msg.body.find("Undeliverable")!= -1 or msg.subject.find("Undeliverable")!= -1 or msg.subject.find("undeliverable")!= -1 or msg.body.find("wasn't found at")!= -1:
+                                rl.append(message)
+                                m = re.search(pattern, msg.body)
+                                m = m[0]
+                                mail_final = m.split('"')[1]   
+                                list_of_undelivered_email_addresses.append(mail_final)
+                                list_of_undelivered_email_addresses=list(filter(None, list_of_undelivered_email_addresses))
+                        else:
+                                print('else')
+                except:
+                        pass
+        if len(rl) ==0:
+                pass
+        else:
+                for m in tqdm(rl):
+                        m.Move(undeliverable)
+        return list_of_undelivered_email_addresses
+
+# -----------------------------------------------------------------------------
+class find_undelivered:
+    
+# -----------------------------------------------------------------------------
+def test_email(item):
+    if item.Class == 46:
+        list_email = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', str(item.Body))
+        print(list_email)
+
+    pattern = re.compile('To: ".*\n?',re.MULTILINE) 
+
+    msg = str(item.subject + " " + item.body).lower()
+
+
+    tokens=["undeliverable", "wasn't found at", "non remis", 
+            "not delivery", "undelivered", "returned mail",
+            "delivery status notification (failure)"]
+
+    find=False
+
+    while (not find) and len(tokens)>0:
+        find=msg.find(tokens[0])!= -1
+        tokens=tokens[1:] 
+
+    if find:
+        list_email = re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', str(item.Body))
+        if len(list_email)>0:
+            print(list_email[0])
+
+    return
+
+
+# -----------------------------------------------------------------------------
+def parse_all_emails(root_folder, folder_path, fun_email):
+    if len(folder_path) == 0:
+        messages = root_folder.Items
+        count = 0
+        max = len(messages)
+        for item in messages: 
+            count=count+1
+            logging.info("%05d / %05d"%(count, max))
+            fun_email(item)
+        return
+
+    for folder in root_folder.Folders:
+        if str(folder) == folder_path[0]:
+            parse_all_emails(folder, folder_path[1:], fun_email)
+
+
+# # -----------------------------------------------------------------------------
+# def parse_all_folder(folders, previous_name = "root", folder_name = "Mois en cours"):
+#     for folder in folders:
+#         next_name = previous_name+" / "+str(folder) 
+#         if str(folder) == folder_name:
+#             print(next_name + " --> " + str(len(folder.Items)))
+#         if len(folder.Folders)>0:
+#             parse_all_folder(folder.Folders, next_name)
 
 # -----------------------------------------------------------------------------
 def test_undelivered():
@@ -46,10 +128,8 @@ def test_undelivered():
     outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
     accounts= win32com.client.Dispatch("Outlook.Application").Session.Accounts
 
-    parse_all_folder(outlook.Folders)
-
-    for folder in outlook.Folders:
-        print(folder)
+    parse_all_emails(outlook, ["ANTS - Florent Tournois", "Mois en cours"], 
+                    test_email)
 
     for account in accounts:
         print(account.DeliveryStore.DisplayName)

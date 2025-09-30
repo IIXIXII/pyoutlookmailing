@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>{{ subject }}</title>
+  <style>
+    html, body { margin:0; padding:0; height:100%; background:#F5F5F7; }
+    table { border-collapse:collapse; border-spacing:0; }
+    img { border:0; line-height:100%; outline:none; text-decoration:none; display:block; }
+    a { color:#11458c !important; text-decoration:underline !important; }
+    h1 { color:#11458c; margin:0 0 16px 0; font-weight:700; font-size:28px; line-height:1.25; }
+  </style>
+  <!--[if mso]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  <![endif]-->
+</head>
+<body style="margin:0; padding:0; background:#F5F5F7;">
+  <!-- Préheader masqué -->
+  <div style="display:none!important; visibility:hidden; opacity:0; overflow:hidden; max-height:0; font-size:1px; line-height:1px; color:#F5F5F7; mso-hide:all;">
+    {{ summary }}
+    &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+  </div>
+
+  <!-- Wrapper -->
+  <table role="presentation" width="100%" bgcolor="#F5F5F7" style="width:100%; background:#F5F5F7;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+
+        <!--[if mso]>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="800" style="width:800px;">
+          <tr>
+            <td align="center" bgcolor="#000f1e" style="background:#000f1e; padding: 0px 10px 10px 10px ;">
+              <img src="cid:{% if hero is defined %}{{ hero }}{% else %}apt_hero_dark_800.png{% endif %}" width="780" alt="APTITUDE — European Digital Identity" style="width:780px; height:auto;">
+
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
+                           arcsize="2%" stroke="t" strokecolor="#E7E7EA" strokeweight="1px"
+                           fillcolor="#FAFAFC"
+                           style="mso-width-percent:1000; width:780px; v-text-anchor:top; height:auto;">
+                <v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:t;">
+                  <div>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="780" style="width:780px;">
+                      <tr>
+                        <td style="padding:0px 32px 32px 32px; font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif; font-size:18px; line-height:1.55; color:#1e173a; mso-line-height-rule:exactly;">
+                          <table role="presentation" width="100%">
+                            <tr>
+                              <td style="font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif; font-size:18px; line-height:1.55; color:#1e173a; mso-line-height-rule:exactly; padding: 20px -20px 40px 40px ;">
+                                {{ content | safe }}
+                              </td>
+                            </tr>
+                          </table>
+                          <table role="presentation" width="100%" style="margin-top:14px;">
+                            <tr>
+                              <td style="font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif; font-size:16px; line-height:1.45; color:#1e173a; mso-line-height-rule:exactly; padding:0 40px;">
+                                <p style="margin:0 0 4px 0; font-weight:600;">
+                                  {% if author is defined %}{{ author }}{% else %}Florent TOURNOIS{% endif %}
+                                </p>
+                                <p style="margin:0;">
+                                  <i style="color:#4e3568; font-size:15px;">
+                                    {% if role is defined %}{{ role }}{% else %}Coordinator{% endif %}
+                                  </i>
+                                </p>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                </v:textbox>
+              </v:roundrect>
+            </td>
+          </tr>
+        </table>
+        <![endif]-->
+
+        <!--[if !mso]><!-->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:800px; width:100%; background:#000f1e;">
+          <tr>
+            <td style="padding:0px 10px 10px 10px ;">
+              <!-- HERO (non-MSO) -->
+              <img src="cid:{% if hero is defined %}{{ hero }}{% else %}apt_hero_dark_800.png{% endif %}" width="780" alt="APTITUDE — European Digital Identity" style="width:100%; height:auto;">
+              <!-- /HERO -->
+
+              <!-- Carte -->
+              <table role="presentation" width="100%" style="border:1px solid #E7E7EA; border-radius:5px; background:#FAFAFC; margin-top:0;">
+                <tr>
+                  <td style="padding:32px 32px; font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif; font-size:18px; line-height:1.55; color:#1e173a; mso-line-height-rule:exactly;">
+                    <table role="presentation" width="100%">
+                      <tr>
+                        <td style="font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif; font-size:18px; line-height:1.55; color:#1e173a; mso-line-height-rule:exactly; padding:20px 40px 40px 40px ;">
+                          {{ content | safe }}
+                        </td>
+                      </tr>
+                    </table>
+
+                    <table role="presentation" width="100%" style="margin-top:14px;">
+                      <tr>
+                        <td style="font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif; font-size:16px; line-height:1.45; color:#1e173a; mso-line-height-rule:exactly; padding:0 40px;">
+                          <p style="margin:0 0 4px 0; font-weight:600;">
+                            {% if author is defined %}{{ author }}{% else %}Florent TOURNOIS{% endif %}
+                          </p>
+                          <p style="margin:0;">
+                            <i style="color:#4e3568; font-size:15px;">
+                              {% if role is defined %}{{ role }}{% else %}Coordinator{% endif %}
+                            </i>
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+              <!-- /Carte -->
+            </td>
+          </tr>
+        </table>
+        <!--<![endif]-->
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

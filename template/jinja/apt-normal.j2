@@ -1,0 +1,18 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
+|   from Florent TOURNOIS.
++--------------------------------------------------------------------------- #}
+{%- if text is defined and text -%}
+{%- set _mt = mt if mt is defined else 18 -%}  {# marge haute par défaut #}
+{%- set _mb = mb if mb is defined else 16 -%}  {# marge basse par défaut #}
+<p style="margin:{{ _mt }}px 0 {{ _mb }}px 0; padding:0;
+          text-align:justify; text-justify:inter-word;
+          mso-line-height-rule:exactly; mso-margin-top-alt:{{ _mt }}px; mso-margin-bottom-alt:{{ _mb }}px;
+          hyphens:auto; -ms-hyphens:auto; -webkit-hyphens:auto; -moz-hyphens:auto; word-wrap:break-word;">
+  {{ text | safe }}
+</p>
+{%- endif -%}

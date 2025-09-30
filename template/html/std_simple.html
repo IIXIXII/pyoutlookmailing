@@ -1,227 +1,236 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
-    <meta charset="utf-8"> <!-- utf-8 works for most cases -->
-    <meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
-    <meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
-    <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
-    <title></title> <!-- The title tag shows in email notifications, like Android 4.4. -->
-
-    <!-- Web Font / @font-face : BEGIN -->
-    <!-- NOTE: If web fonts are not required, lines 10 - 27 can be safely removed. -->
-
-    <!-- Desktop Outlook chokes on web font references and defaults to Times New Roman, so we force a safe fallback font. -->
-    <!--[if mso]>
-        <style>
-            * {
-                font-family: sans-serif !important;
-            }
-        </style>
-    <![endif]-->
-
-    <!-- All other clients get the webfont reference; some will render the font and others will silently fail to the fallbacks. More on that here: http://stylecampaign.com/blog/2015/02/webfont-support-in-email/ -->
-    <!--[if !mso]><!-->
-    <!-- insert web font reference, eg: <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'> -->
-    <!--<![endif]-->
-
-    <!-- Web Font / @font-face : END -->
-
-    <!-- CSS Reset : BEGIN -->
-    <style>
-
-        /* What it does: Remove spaces around the email design added by some email clients. */
-        /* Beware: It can remove the padding / margin and add a background color to the compose a reply window. */
-        html,
-        body {
-            margin: 0 auto !important;
-            padding: 0 !important;
-            height: 100% !important;
-            width: 100% !important;
-        }
-
-        /* What it does: Stops email clients resizing small text. */
-        * {
-            -ms-text-size-adjust: 100%;
-            -webkit-text-size-adjust: 100%;
-        }
-
-        /* What it does: Centers email on Android 4.4 */
-        div[style*="margin: 16px 0"] {
-            margin: 0 !important;
-        }
-
-        /* What it does: Stops Outlook from adding extra spacing to tables. */
-        table,
-        td {
-            mso-table-lspace: 0pt !important;
-            mso-table-rspace: 0pt !important;
-        }
-
-        /* What it does: Fixes webkit padding issue. Fix for Yahoo mail table alignment bug. Applies table-layout to the first 2 tables then removes for anything nested deeper. */
-        table {
-            border-spacing: 0 !important;
-            border-collapse: collapse !important;
-            table-layout: fixed !important;
-            margin: 0 auto !important;
-        }
-        table table table {
-            table-layout: auto;
-        }
-
-        /* What it does: Uses a better rendering method when resizing images in IE. */
-        img {
-            -ms-interpolation-mode:bicubic;
-        }
-
-        /* What it does: A work-around for email clients meddling in triggered links. */
-        *[x-apple-data-detectors],  /* iOS */
-        .x-gmail-data-detectors,    /* Gmail */
-        .x-gmail-data-detectors *,
-        .aBn {
-            border-bottom: 0 !important;
-            cursor: default !important;
-            color: inherit !important;
-            text-decoration: none !important;
-            font-size: inherit !important;
-            font-family: inherit !important;
-            font-weight: inherit !important;
-            line-height: inherit !important;
-        }
-
-        /* What it does: Prevents Gmail from displaying a download button on large, non-linked images. */
-        .a6S {
-            display: none !important;
-            opacity: 0.01 !important;
-        }
-        /* If the above doesn't work, add a .g-img class to any image in question. */
-        img.g-img + div {
-            display: none !important;
-        }
-
-        /* What it does: Prevents underlining the button text in Windows 10 */
-        .button-link {
-            text-decoration: none !important;
-        }
-
-        /* What it does: Removes right gutter in Gmail iOS app: https://github.com/TedGoas/Cerberus/issues/89  */
-        /* Create one of these media queries for each additional viewport size you'd like to fix */
-
-        /* iPhone 4, 4S, 5, 5S, 5C, and 5SE */
-        @media only screen and (min-device-width: 320px) and (max-device-width: 374px) {
-            .email-container {
-                min-width: 320px !important;
-            }
-        }
-        /* iPhone 6, 6S, 7, 8, and X */
-        @media only screen and (min-device-width: 375px) and (max-device-width: 413px) {
-            .email-container {
-                min-width: 375px !important;
-            }
-        }
-        /* iPhone 6+, 7+, and 8+ */
-        @media only screen and (min-device-width: 414px) {
-            .email-container {
-                min-width: 414px !important;
-            }
-        }
-
-    </style>
-    <!-- CSS Reset : END -->
-
-    <!-- Progressive Enhancements : BEGIN -->
-    <style>
-
-    /* What it does: Hover styles for buttons */
-    .button-td,
-    .button-a {
-        transition: all 100ms ease-in;
-    }
-    .button-td:hover,
-    .button-a:hover {
-        background: #555555 !important;
-        border-color: #555555 !important;
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <title>{{headline}}</title>
+  <!--[if mso]><style>* { font-family: Arial, sans-serif !important; }</style><![endif]-->
+  <style>
+    /* ===== Tokens de marque ===== */
+    :root {
+      --apt-blue: #11458c; /* principal */
+      --apt-yellow: #ffd20d; /* principal */
+      --apt-purple: #6600ff; /* secondaire */
+      --apt-purple-2: #4905aa; /* secondaire */
+      --apt-coral: #ff6f61; /* secondaire */
+      --bg-body: #F5F5F7; /* fond email */
+      --bg-card: #FAFAFC; /* carte (légèrement plus foncée que blanc) */
+      --text-body: #161616; /* texte */
+      --text-muted: #6A6A6A; /* texte secondaire */
+      --border: #E7E7EA; /* bordure carte */
     }
 
-    /* Media Queries */
-    @media screen and (max-width: 600px) {
+    /* RESET */
+    html, body { margin:0!important; padding:0!important; height:100%!important; width:100%!important; }
+    * { -ms-text-size-adjust:100%; -webkit-text-size-adjust:100%; }
+    table, td { mso-table-lspace:0pt!important; mso-table-rspace:0pt!important; }
+    table { border-spacing:0!important; border-collapse:collapse!important; table-layout:fixed!important; margin:0 auto!important; }
+    img { -ms-interpolation-mode:bicubic; border:0; line-height:100%; outline:none; text-decoration:none; display:block; }
+    a { text-decoration:none; }
+    a[x-apple-data-detectors], .x-gmail-data-detectors, .x-gmail-data-detectors *, .aBn { color:inherit!important; text-decoration:none!important; border-bottom:0!important; cursor:default!important; }
+    .a6S { display:none!important; opacity:0.01!important; }
+    img.g-img + div { display:none!important; }
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
 
-        /* What it does: Adjust typography on small screens to improve readability */
-        .email-container p {
-            font-size: 17px !important;
-        }
+    /* CONTAINER */
+    .email-container { width:100%; max-width:800px; margin:0 auto; }
 
+    /* TYPO */
+    .sff { font-family: 'Circular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+
+    /* UTILS */
+    .p-24 { padding:24px; }
+    .pt-0 { padding-top:0; }
+    .pb-0 { padding-bottom:0; }
+    .mb-0 { margin-bottom:0; }
+    .text-left { text-align:left; }
+    .text-right { text-align:right; }
+
+    /* COULEURS (mode clair) */
+    .bg-body { background: var(--bg-body); }
+    .bg-card { background: var(--bg-card); }
+    .text-body { color: var(--text-body); }
+    .text-muted { color: var(--text-muted); }
+    .brand { color: var(--apt-blue); }
+    .border { border: 1px solid var(--border); }
+
+    /* Carte + feuille intérieure */
+    .radius { border-radius:14px; }
+    .sheet { border:1px solid var(--border); border-radius:5px; }
+
+    /* HERO: par défaut clair visible, sombre caché */
+    .hero-dark { display:none; }
+
+    /* ===== Liens brand ===== */
+    a { color: var(--apt-blue); text-decoration: underline; }
+    a:hover, a:focus { color: var(--apt-yellow) !important; }
+
+    /* ===== Listes : puces carrées jaunes ===== */
+    .text-body ul { margin: 0 0 16px; padding: 0; list-style: none; }
+    .text-body ul li { position: relative; padding-left: 18px; margin: 0 0 8px; }
+    .text-body ul li::before { content: ''; width: 8px; height: 8px; background: var(--apt-yellow); position: absolute; left: 0; top: 8px; border-radius: 0; }
+    .apt-list { margin: 0 0 16px; padding: 0; list-style: none; }
+    .apt-list li { position: relative; padding-left: 18px; margin: 0 0 8px; }
+    .apt-list li::before { content: ''; width: 8px; height: 8px; background: var(--apt-yellow); position: absolute; left: 0; top: 8px; border-radius: 0; }
+
+    /* Responsive */
+    @media screen and (max-width:600px) {
+      .p-24 { padding:20px; }
+      h1 { font-size:24px!important; line-height:1.3!important; }
     }
 
-    </style>
-    <!-- Progressive Enhancements : END -->
-
-    <!-- What it does: Makes background images in 72ppi Outlook render at correct size. -->
-    <!--[if gte mso 9]>
-    <xml>
-        <o:OfficeDocumentSettings>
-            <o:AllowPNG/>
-            <o:PixelsPerInch>96</o:PixelsPerInch>
-        </o:OfficeDocumentSettings>
-    </xml>
-    <![endif]-->
-
+    /* ===== Dark mode : override des tokens + swap hero ===== */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-body: #0B0B0D;
+        --bg-card: #1B1B1F;
+        --text-body: #EDEDED;
+        --text-muted: #B5B7BD;
+        --border: #2A2A31;
+      }
+      .brand { color:#8DA7FF !important; }
+      .hero-light { display:none !important; }
+      .hero-dark  { display:block !important; }
+    }
+  </style>
+  <!--[if gte mso 9]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  <![endif]-->
+  <!--[if mso]>
+  <style>
+    /* Outlook ne gère pas ::before : puces natives en fallback */
+    .text-body ul, .apt-list { list-style: disc; margin: 0 0 16px; padding-left: 20px; }
+    .text-body ul li, .apt-list li { padding-left: 0; margin: 0 0 8px; }
+  </style>
+  <![endif]-->
 </head>
-<!--
-	The email background color (#222222) is defined in three places:
-	1. body tag: for most email clients
-	2. center tag: for Gmail and Inbox mobile apps and web versions of Gmail, GSuite, Inbox, Yahoo, AOL, Libero, Comcast, freenet, Mail.ru, Orange.fr
-	3. mso conditional: For Windows 10 Mail
--->
-<body width="100%" bgcolor="#FFF" style="margin: 0; mso-line-height-rule: exactly;">
-    <center style="width: 100%; background: #FFF; text-align: left;">
+<body class="bg-body sff" width="100%" style="margin:0;">
+  <center style="width:100%; background: var(--bg-body);">
+    <!-- PREHEADER (masqué) -->
+    <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;" aria-hidden="true">{{summary}}</div>
+    <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>
+
     <!--[if mso | IE]>
-    <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#FFF">
-    <tr>
-    <td>
+    <table role="presentation" width="100%" bgcolor="#F5F5F7" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
+    <table role="presentation" width="800" cellpadding="0" cellspacing="0" border="0"><tr><td>
     <![endif]-->
 
-        <!-- Visually Hidden Preheader Text : BEGIN -->
-        <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
-            {{ summary }}
-        </div>
-        <!-- Visually Hidden Preheader Text : END -->
+    <table role="presentation" class="email-container" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:800px;">
 
-        <!-- Create white space after the desired preview text so email clients don=E2=80=99t pull other distracting text into the inbox preview. Extend as necessary. -->
-        <!-- Preview Text Spacing Hack : BEGIN -->
-        <div style="display: none; font-size: 1px; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; mso-hide: all; font-family: sans-serif;">
-	        &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
-        </div>
-        <!-- Preview Text Spacing Hack : END -->
+      <!-- CARTE PRINCIPALE -->
+      <tr>
+        <td class="p-24">
+          <table role="presentation" width="100%" class="bg-card border radius" cellpadding="0" cellspacing="0" bgcolor="#FAFAFC" style="background: var(--bg-card);">
 
-        <!--
-            Set the email width. Defined in two places:
-            1. max-width for all clients except Desktop Windows Outlook, allowing the email to squish on narrow but never go wider than 600px.
-            2. MSO tags for Desktop Windows Outlook enforce a 600px width.
-        -->
-        <div style="max-width: 800px; margin: auto;" class="email-container">
-            <!--[if mso]>
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center">
+            <!-- BARRE DE MARQUE (séparation visuelle sous Outlook & co) -->
             <tr>
-            <td>
-            <![endif]-->
+              <td style="height:4px;line-height:4px;font-size:0;background:#11458c;">&nbsp;</td>
+            </tr>
 
-            <!-- Email Body : BEGIN -->
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 800px;">
+            <!-- HERO (double : clair/sombre) avec fallback MSO -->
+            <tr>
+              <td style="padding:0;">
+                <!-- Non-MSO : deux images, on bascule via CSS dark-mode -->
+                <!--[if !mso]><!-- -->
+<img src="cid:apt_hero_light.png" alt="" width="800" class="hero hero-light" style="width:100%;height:auto;border-top-left-radius:5px;border-top-right-radius:5px;" role="presentation">
+<img src="cid:apt_hero_dark.png"  alt="" width="800" class="hero hero-dark"  style="width:100%;height:auto;border-top-left-radius:5px;border-top-right-radius:5px;display:none;" role="presentation">
+<!--<![endif]-->
 
-                <!-- Hero Image, Flush : BEGIN -->
-                <tr><td style="padding: 40px; font-family: sans-serif; font-size: 15px; line-height: 140%; color: #555555; padding-top: 40px; text-align: justify; text-justify: inter-word;">
-                    {{content | safe}}
-                </td></tr>
-                <tr><td style="padding: 40px; font-family: sans-serif; font-size: 15px; line-height: 140%; color: #555555; padding-top: 40px;">
-                                    <p style="margin: 0;">{% if author is defined %}{{author}}{% else %}Florent TOURNOIS{% endif %}</p>
-                                    <p style="margin: 0;margin-top: -25px; ">{% if role is defined %}{{ role }}{% else %}Coordinator{% endif %}</p>                </td>
-                </tr>
-                <!-- Hero Image, Flush : END -->
-    <!--[if mso | IE]>
-    </td>
-    </tr>
+<!-- MSO/Outlook : fallback statique (hérite de la barre brand au-dessus) -->
+<!--[if mso]>
+<img src="cid:apt_hero_light.png" alt="" width="800" style="width:100%;height:auto;border-top-left-radius:0;border-top-right-radius:0;" role="presentation">
+<![endif]-->
+              </td>
+            </tr>
+
+            <!-- FEUILLE INTERNE (bord fin + coins arrondis, y compris Outlook via VML) -->
+            <tr>
+              <td class="p-24">
+                <!--[if mso]>
+                <v:roundrect$1style="mso-width-percent:1000;mso-wrap-style:none;mso-position-horizontal:center;">
+  <w:anchorlock/>
+  <v:textbox$1style="mso-fit-shape-to-text:f;">
+    <div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding:32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding:0 0 8px 0;text-align:left;">
+                  <h1 style="margin:0;font-size:28px;line-height:1.35;font-weight:700;color:#11458c;">{{headline}}</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0 0 0;text-align:left;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="text-body" style="font-size:18px;line-height:1.55;color:#161616;"><tr><td style="padding:0;">{{content | safe}}</td></tr></table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:12px 0 0 0;text-align:right;font-size:12px;color:#6A6A6A;">
+                  {% if author is defined %}{{author}}{% else %}Florent TOURNOIS{% endif %}<br>
+                  <i style="font-size:10px;color:#B8B8B8;">{% if role is defined %}{{ role }}{% else %}Coordinator{% endif %}</i>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </v:textbox>
+</v:roundrect>
+                <![endif]-->
+
+                <!--[if !mso]><!-- -->
+                <table role="presentation" width="100%" class="sheet" cellpadding="0" cellspacing="0" border="1" bordercolor="#E7E7EA" style="border:1px solid var(--border); border-radius:5px; border-collapse:separate; width:100%;">
+                  <tr>
+                    <td style="padding:32px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td style="padding:0 0 8px 0;text-align:left;">
+                            <h1 class="brand" style="margin:0;font-size:28px;line-height:1.35;font-weight:700;">{{headline}}</h1>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:8px 0 0 0;text-align:left;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="text-body" style="font-size:18px;line-height:1.55; color: var(--text-body);"><tr><td style="padding:0;">{{content | safe}}</td></tr></table>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="padding:12px 0 0 0;text-align:right;font-size:12px; color: var(--text-muted);">
+                            {% if author is defined %}{{author}}{% else %}Florent TOURNOIS{% endif %}<br>
+                            <i style="font-size:10px;color:#B8B8B8;">{% if role is defined %}{{ role }}{% else %}Coordinator{% endif %}</i>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+                <!--<![endif]-->
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+
+      <!-- ESPACE BAS DE PAGE -->
+      <tr><td style="height:28px;line-height:28px;font-size:0;">&nbsp;</td></tr>
+
     </table>
+
+    <!--[if mso | IE]>
+    </td></tr></table>
+    </td></tr></table>
     <![endif]-->
-    </center>
+  </center>
 </body>
 </html>

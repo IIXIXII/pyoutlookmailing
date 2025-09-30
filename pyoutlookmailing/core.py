@@ -33,6 +33,7 @@ import collections
 from copy import deepcopy
 import win32com.client as win32
 from jinja2 import Template
+import re
 
 import pymdtools.common as common
 import pymdtools.instruction as mdinst
@@ -50,6 +51,10 @@ __DEFAULT_CONF_FILENAME__ = "default.conf"
 # The filename of the default configuration
 # -----------------------------------------------------------------------------
 __EXT_FILENAME__ = ".conf"
+
+# -----------------------------------------------------------------------------
+__cid_re__ = \
+    r"src=['\"]cid:(?P<name>[\.a-zA-Z0-9_-]+)['\"]"
 
 ###############################################################################
 # Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
@@ -318,14 +323,17 @@ def read_content_filename(conf):
             filename=common.search_for_file(object["filename"],
                                             conf['paths']['base_search'],
                                             ['./','conf','files'],2)
-            conf[key]['content']['txt'] = \
-                Template(common.get_file_content(filename)).render(conf[key])
+            conf[key]['content']['txt'] = common.get_file_content(filename)
 
             vars = mdinst.get_vars_from_md_text(conf[key]['content']['txt'])
             for x in vars:
                 logging.info("Override the parameter %s='%s'", x,vars[x])
                 conf[key][x]=vars[x]
+            # conf[key]['content']['txt'] = \
+            #     Template(conf[key]['content']['txt']).render(conf[key])
+
             del conf[key]["content"]["filename"]
+
     return conf
 
 # -----------------------------------------------------------------------------
@@ -397,7 +405,7 @@ def new_email(conf):
 
 
 # -----------------------------------------------------------------------------
-def __send_email(conf):
+def __send_email(conf, cid={}):
     email = new_email(conf)
     
     email.To = ' ; '.join(conf['to']['list'])
@@ -406,8 +414,20 @@ def __send_email(conf):
     if 'Bcc' in conf and isinstance(conf['cc'], dict) and 'list' in conf['cc']:
         email.Cc = ' ; '.join(conf['bcc']['list'])
     email.Subject = conf['email']['subject']
-    email.HTMLBody = conf['email']['html_body']
+    # email.HTMLBody = conf['email']['html_body']
+    conf['email']['root']=conf
+    email.HTMLBody = Template(conf['email']['html_body']).render(conf['email'])
 
+    # print('-----------------------------------------')
+    # print(conf['email']['content'])
+    # print('-----------------------------------------')
+    # print(email.HTMLBody)
+    # print('-----------------------------------------')
+
+    for cidname in cid:
+        att = email.Attachments.Add(cid[cidname], 1, 0)
+        att.PropertyAccessor.SetProperty('http://schemas.microsoft.com/mapi/proptag/0x3712001F', cidname);
+    
     if 'attachments' in conf['email']:
         list_files= conf['email']['attachments']
         for f in list_files:
@@ -430,11 +450,24 @@ def send_email(conf):
         logging.warning("there is no 'to' in the conf")
         return conf
     
+    # search the cid
+    cid={}
+    search_folder = [conf['paths']['img']] + conf['paths']['base_search']
+    current_text = conf['email']['html_body']
+    match_cid = re.search(__cid_re__, current_text)
+    while match_cid is not None:
+        name = match_cid.group('name')
+        filename=common.search_for_file(name,
+                                        search_folder,
+                                        ['./','img', 'conf','files'],2)
+        cid[name]=filename
+        current_text = current_text[match_cid.end(0):]
+        match_cid = re.search(__cid_re__, current_text)
+        
     if ('individual_email' not in conf['to']) or \
         (not conf['to']['individual_email']):
         logging.info(" >>> send email to %s", conf['to']['list'])
-        return __send_email(conf)
-
+        return __send_email(conf, cid)
 
     initial_list=[]
     for email in conf['to']['list']:
@@ -446,7 +479,7 @@ def send_email(conf):
         count=count+1
         conf['to']['list'] = [email]
         logging.info(" %03d/%03d send email to %s", count, count_max, email)
-        __send_email(conf)
+        __send_email(conf, cid)
 
     conf['to']['list'] = initial_list
 

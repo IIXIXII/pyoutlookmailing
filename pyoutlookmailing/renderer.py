@@ -432,10 +432,91 @@ class RendererFi(RendererDefault, ContextManagment):
         context = self.context
 
         context['text'] = text.strip(' ')
+        if len(context['text']) == 0:
+            return ''
+
         if 'p' not in inst:
             inst['p']='normal'
 
         return self.jinja_env.get_template("fi_"+inst['p']+".j2").render(context)
+
+
+###############################################################################
+# An object to wrap the mistune render
+###############################################################################
+class RendererApt(RendererDefault, ContextManagment):
+
+    ###########################################################################
+    # generate a renderer
+    #
+    # @return the renderer
+    ###########################################################################
+    @staticmethod
+    def generate(**kwargs):
+        return RendererApt(jinja_env=kwargs['jinja_env'],
+                          context=kwargs['context'])
+
+    ###########################################################################
+    # register the renderer
+    ###########################################################################
+    __register = \
+        RendererGenerator.register('model:apt', generate.__func__) and \
+        RendererGenerator.register('model-apt', generate.__func__)
+
+    ###########################################################################
+    # init the callapsable
+    ###########################################################################
+    def __init__(self, jinja_env, context):
+        RendererDefault.__init__(self, jinja_env)
+        ContextManagment.__init__(self, context)
+
+    ###########################################################################
+    # Rendering header/heading tags like ``<h1>`` ``<h2>``.
+    #
+    # @param text: rendered text content for the header.
+    # @param level: a number for the header level, for example: 1.
+    # @param raw: raw text content of the header.
+    ###########################################################################
+    def header(self, text, level, raw=None):
+        self.instructions = read_instructions(text)
+        text = strip_xml_comment(text)
+        context = self.context
+
+        context['level'] = level
+        context['text'] = text
+
+        for inst in self.instructions:
+            print(inst)
+            context[inst]= self.instructions[inst]
+            if context[inst].lower() in ('y', 'yes', 't', 'true', 'on', '1'):
+                context[inst]=True
+            if context[inst].lower() in ('n', 'no', 'f', 'false', 'off', '0'):
+                context[inst]=False
+
+        (begin, end) = get_render_couple(
+            self.jinja_env.get_template("apt-header.j2"), context)
+
+        self.del_instructions()
+        return (begin, end)
+
+    ###########################################################################
+    # Rendering paragraph tags. Like ``<p>``.
+    ###########################################################################
+    def paragraph(self, text):
+        inst = read_instructions(text)
+        text = strip_xml_comment(text)
+        context = self.context
+
+        context['text'] = text.strip(' ')
+        if len(context['text']) == 0:
+            return ''
+
+        if 'p' not in inst:
+            inst['p']='normal'
+        if 'mb' in inst:
+            context['mb']=inst['mb']
+
+        return self.jinja_env.get_template("apt-"+inst['p']+".j2").render(context)
 
 
 # ###############################################################################
@@ -491,6 +572,7 @@ class RendererDispatch(mistune.Renderer):
         self.__renderers[0] = RendererGenerator.create('default', **kwargs)
         self.__end_stack = {}
         self.__kwargs = kwargs
+        self.__change_renderer(kwargs['context'])
 
     ###########################################################################
     # Get renderer
@@ -559,26 +641,34 @@ class RendererDispatch(mistune.Renderer):
     # Change the renderer if needed
     # @param text the text containing instrction
     ###########################################################################
-    def change_renderer_on_instrcution(self, text):
+    def __change_renderer(self, instructions):
         # Find the new renderer if needed
-        instructions = read_instructions(text)
-
         new_renderer = None
         for key in instructions:
-            candidats = [(key, instructions[key]),
-                         (key + ":" + instructions[key], None)]
-            for candidat in candidats:
-                if RendererGenerator.is_renderer(candidat[0]):
-                    if new_renderer is None:
-                        new_renderer = candidat
-                    else:
-                        raise Exception("Find two renderers")
+            if isinstance(instructions[key], str):
+                candidats = [(key, instructions[key]),
+                            (key + ":" + instructions[key], None)]
+                for candidat in candidats:
+                    if RendererGenerator.is_renderer(candidat[0]):
+                        if new_renderer is None:
+                            new_renderer = candidat
+                        else:
+                            raise Exception("Find two renderers")
 
         if new_renderer is not None:
             self.__renderers[self.level] = \
                 RendererGenerator.create(new_renderer[0],
                                          init_param=new_renderer[1],
                                          **self.__kwargs)
+
+    ###########################################################################
+    # Change the renderer if needed
+    # @param text the text containing instrction
+    ###########################################################################
+    def change_renderer_on_instrcution(self, text):
+        # Find the new renderer if needed
+        instructions = read_instructions(text)
+        self.__change_renderer(instructions)
 
     ###########################################################################
     # set the new level

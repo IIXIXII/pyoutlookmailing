@@ -83,7 +83,8 @@ REM ----------------------------------------------------------------------------
 (
     CALL :PRINT_LINE "   Install editable version" 
     CALL :UPDATE_PIP
-    pip install -e .
+    python -m venv .venv
+    pip install --editable .
     exit /b
 )
 REM -------------------------------------------------------------------------------

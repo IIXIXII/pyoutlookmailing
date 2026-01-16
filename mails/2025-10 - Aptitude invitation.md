@@ -13,7 +13,7 @@ We are pleased to invite you to the **Kick-off Meeting of the Aptitude Consortiu
 Further details on the agenda and logistics will be shared closer to the event.  
 
 👉 **Please confirm your attendance** via the following link :  
-[<!-- link-model=apt-button --> ☆ Secure Your Spot ☆ ](https://lu.ma/tgks1886)
+[<!-- link-model=apt-button2 --> ☆ Secure Your Spot ☆ ](https://lu.ma/tgks1886)
 
 For any inquiries, please contact:  
 - hippolyte.muratromero@wavestone.com  

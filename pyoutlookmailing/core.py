@@ -240,6 +240,15 @@ def load_conf(filename, folder = "./"):
 # -----------------------------------------------------------------------------
 def compute_conf(conf, cmd_line_args=None):
     conf = read_excel_list(conf)
+    if 'email' in conf:
+        if 'content' not in conf['email']:
+            conf['email']['content']={}
+        if 'filename'  not in conf['email']['content']:
+            md_filename = cmd_line_args.conf_filename
+            md_filename = common.filename_ext_to_md(md_filename)
+            conf['email']['content']['filename'] = md_filename
+            logging.info('Content filename: %s', md_filename)
+
     conf = read_content_filename(conf)
 
     if cmd_line_args is not None:
@@ -414,9 +423,8 @@ def __send_email(conf, cid={}):
     if 'Bcc' in conf and isinstance(conf['cc'], dict) and 'list' in conf['cc']:
         email.Cc = ' ; '.join(conf['bcc']['list'])
     email.Subject = conf['email']['subject']
-    # email.HTMLBody = conf['email']['html_body']
-    conf['email']['root']=conf
-    email.HTMLBody = Template(conf['email']['html_body']).render(conf['email'])
+    email.HTMLBody = conf['email']['html_body']
+    # email.HTMLBody = Template(conf['email']['html_body']).render(conf['email'])
 
     # print('-----------------------------------------')
     # print(conf['email']['content'])
@@ -454,6 +462,9 @@ def send_email(conf):
     cid={}
     search_folder = [conf['paths']['img']] + conf['paths']['base_search']
     current_text = conf['email']['html_body']
+    # print("------------------------")
+    # print(current_text)
+    # print("------------------------")
     match_cid = re.search(__cid_re__, current_text)
     while match_cid is not None:
         name = match_cid.group('name')

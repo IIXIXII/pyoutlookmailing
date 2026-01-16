@@ -10,7 +10,11 @@
 {% if inline is defined -%}
     src="data:image/png;base64,{{base64}}"
 	{% else -%}
-	src="{{src}}"	
+	{% if cid is defined -%}
+		src="cid:{{src}}"
+		{% else -%}
+		src="{{src}}"	
+	{%- endif %}
 {%- endif %}
  alt="{{alt}}" 
 {% if title is defined -%}

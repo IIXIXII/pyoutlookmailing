@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <!-- Empêcher les bascules automatiques en dark mode (Apple Mail / iOS) -->
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>{{ subject }}</title>
+  <style>
+    /* Base */
+    html, body { margin:0; padding:0; height:100%; background:#F5F5F7; }
+    table { border-collapse:collapse; border-spacing:0; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+    img { border:0; line-height:100%; outline:none; text-decoration:none; display:block; }
+    a { color:#11458c !important; text-decoration:underline !important; }
+    h1 { color:#11458c; margin:0 0 16px 0; font-weight:700; font-size:28px; line-height:1.25; }
+
+    /* Classes « force light » (réappliquées en dark mode) */
+    .bg-page   { background:#F5F5F7 !important; }
+    .bg-wrap   { background:#F5F5F7 !important; }
+    .bg-shell  { background:#000f1e !important; }
+    .bg-card   { background:#FAFAFC !important; }
+    .txt-main  { color:#1e173a !important; }
+    .link      { color:#11458c !important; }
+
+    /* Apple Mail / iOS / clients modernes : re-forcer les couleurs en dark mode */
+    @media (prefers-color-scheme: dark) {
+      .bg-page, .bg-wrap { background:#F5F5F7 !important; }
+      .bg-shell { background:#000f1e !important; }
+      .bg-card  { background:#FAFAFC !important; }
+      .txt-main { color:#1e173a !important; }
+      .link     { color:#11458c !important; }
+    }
+
+    /* Outlook.com / OWA en dark mode (ajoute data-ogsc sur le <body>) */
+    [data-ogsc] .bg-page, 
+    [data-ogsc] .bg-wrap { background:#F5F5F7 !important; }
+    [data-ogsc] .bg-shell { background:#000f1e !important; }
+    [data-ogsc] .bg-card  { background:#FAFAFC !important; }
+    [data-ogsc] .txt-main { color:#1e173a !important; }
+    [data-ogsc] .link     { color:#11458c !important; }
+  </style>
+</head>
+<body class="bg-page" style="margin:0; padding:0; background:#F5F5F7;">
+  <!-- Préheader masqué -->
+  <div style="display:none!important;visibility:hidden;opacity:0;overflow:hidden;max-height:0;max-width:0;font-size:1px;line-height:1px;color:#F5F5F7;mso-hide:all;">
+    {{ summary }}&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+  </div>
+
+  <!-- Wrapper -->
+  <table role="presentation" width="100%" bgcolor="#F5F5F7" class="bg-wrap" style="width:100%; background:#F5F5F7;">
+    <tr>
+      <td align="center" style="padding:12px;">
+
+        <!-- Conteneur 800px -->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="800" class="bg-shell" style="width:800px; background:#000f1e;">
+          <!-- HERO -->
+          <tr>
+            <td style="padding:0; font-size:0; line-height:0; background:#000f1e;">
+              <img src="cid:{% if hero is defined %}{{ hero }}{% else %}apt_hero_dark_800.png{% endif %}"
+                   width="800"
+                   alt="APTITUDE — European Digital Identity"
+                   style="display:block;width:800px;height:auto;border:0;">
+            </td>
+          </tr>
+
+          <!-- Carte avec « contour » 10px par padding -->
+          <tr>
+            <td bgcolor="#000f1e" style="padding:10px; background:#000f1e;">
+              <!-- Table interne 780px, fond clair -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="780" class="bg-card" style="width:780px; background:#FAFAFC;">
+                <!-- Texte -->
+                <tr>
+                  <td class="txt-main" style="padding:40px; font-family:'Circular','Circular Std',Arial,Helvetica,sans-serif; font-size:18px; line-height:1.55; color:#1e173a; mso-line-height-rule:exactly; background:#FAFAFC;">
+                    {{ content | safe }}
+                    <div class="txt-main" style="margin-top:24px; font-size:16px; line-height:1.45; color:#1e173a;">
+                      <p style="margin:0 0 4px 0; font-weight:600;">
+                        {% if author is defined %}{{ author }}{% else %}Florent TOURNOIS{% endif %}
+                      </p>
+                      <p style="margin:0;">
+                        <span style="font-style:italic; color:#4e3568; font-size:15px;">
+                          {% if role is defined %}{{ role }}{% else %}Coordinator{% endif %}
+                        </span>
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Skyline 780px (collée aux bords internes) -->
+                <tr>
+                  <td align="left" style="padding:0; margin:0; font-size:0; line-height:0; background:#FAFAFC;">
+                    <img src="cid:skyline_paris_780.png"
+                         width="780"
+                         alt="Skyline Paris"
+                         style="display:block;width:780px;height:auto;border:0;">
+                  </td>
+                </tr>
+              </table>
+              <!-- /Table interne -->
+            </td>
+          </tr>
+          <!-- /Carte -->
+        </table>
+        <!-- /Conteneur -->
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

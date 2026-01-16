@@ -1,4 +1,4 @@
-<!-- var(subject)="[Aptitude] Limited exhibition corners available at Aptitude – October 22–23, 2025" -->
+<!-- var(subject)="[Aptitude] Limited exhibition corners available at Aptitude Kick-off in Paris | October 22–23, 2025" -->
 <!-- var(summary)="Consortium Aptitude Kick-off" -->
 <!-- var(role)="Coordinator" -->
 <!-- var(hero)="apt_hero_koparis_800.png" -->
@@ -16,6 +16,6 @@ These spaces provide a unique opportunity to:
 As availability is limited, we kindly invite you to confirm your interest by replying to this email. For all practical and financial details, please contact:  
 📩 [leila.chaouachi@wavestone.com](mailto:leila.chaouachi@wavestone.com)  
 
-We look forward to the possibility of welcoming you as an exhibitor at **Aptitude 2025**.  
+We look forward to the possibility of welcoming you as an exhibitor at **Aptitude Kick-off in Paris**.  
 
 <br/>Best regards,  

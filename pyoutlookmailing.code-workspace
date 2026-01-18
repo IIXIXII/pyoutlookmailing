@@ -4,19 +4,7 @@
 			"path": "."
 		},
 		{
-			"path": "../xenon2"
-		},
-		{
-			"path": "../upref"
-		},
-		{
 			"path": "../pymdtools"
-		},
-		{
-			"path": "../outlooksend"
-		},
-		{
-			"path": "../layout"
 		}
 	],
 	"settings": {}

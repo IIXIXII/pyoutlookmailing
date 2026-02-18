@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Package metadata for pyoutlookmailing
 # This file MUST NOT import any other module.
 # It is safe to load via exec() from setup.py / build backend.
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 __title__           = "pyoutlookmailing"
 __description__     = "Sending email via outlook"
 

@@ -62,7 +62,7 @@ def get_new_id(label=None):
     if result is None:
         result = "id"
 
-    result = common.str_to_ascii(result)
+    result = common.to_ascii(result)
     result = camelcase(snakecase(result))
     result = result.replace("_", "")
     result = "id%s%04d" % (result[:10], get_new_id.__id_counter__)

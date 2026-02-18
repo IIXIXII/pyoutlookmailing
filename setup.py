@@ -13,9 +13,9 @@ import time
 from shutil import rmtree
 from setuptools import setup, Command
 
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Load package metadata WITHOUT importing the package (PEP517/660 safe)
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 __mymodule__ = "pyoutlookmailing"
 __root__ = os.path.abspath(os.path.dirname(__file__))
 

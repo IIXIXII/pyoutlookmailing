@@ -102,6 +102,7 @@ def path(*paths):
 
     return os.path.normpath(common.set_correct_path(result))
 
+
 ###############################################################################
 # Expand paths in the config file
 #
@@ -128,6 +129,7 @@ def expand_paths(data, root):
             data[key] = path(data[key], data['root'], root)
 
     return data
+
 
 ###############################################################################
 # Read conf yaml
@@ -173,6 +175,7 @@ def __read_yaml(filename):
     
 
     return result
+
 
 ###############################################################################
 # Read conf yaml

@@ -132,7 +132,6 @@ def __main():
         conf = pyom.load_conf(args.conf_filename, __get_this_folder())
         conf = pyom.compute_conf(conf, args)
         pyom.send_email(conf)
-
     except argparse.ArgumentError as errmsg:
         logging.error(str(errmsg))
         if ('args' in locals()) and (args.windows):

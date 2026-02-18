@@ -1,12 +1,12 @@
 @ECHO OFF
 SETLOCAL EnableExtensions
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 REM Entry point / command dispatcher
 REM Usage:
 REM   CALL common.bat :PRINT_LINE "hello"
 REM   CALL common.bat PRINT_LINE "hello"
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 
 IF "%~1"=="" (
   ECHO Usage: %~nx0 ^<COMMAND^> [args...]
@@ -32,7 +32,7 @@ IF /I "%CMD%"=="GET_PYTHON"           CALL :INIT_PYTHON || EXIT /B 1
 CALL :%CMD% %1 %2 %3 %4 %5 %6 %7 %8 %9
 EXIT /B %ERRORLEVEL%
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 :PRINT_LINE
 SETLOCAL EnableDelayedExpansion
 SET "LINE_TO_PRINT=%~1"
@@ -60,11 +60,11 @@ EXIT /B 0
 CALL :PRINT_LINE "├──────────────────────────────────────────────────────────────────────────────────────────────────┤"
 EXIT /B 0
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 REM Initialize venv python
 REM - common.bat is located in <repo>\scripts\common.bat
 REM - venv is located in <repo>\.venv
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 :INIT_PYTHON
 IF /I "%PYTHON_READY%"=="1" EXIT /B 0
 
@@ -103,7 +103,7 @@ EXIT /B 0
 ECHO %PYTHON%
 EXIT /B 0
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 :UPDATE_PIP
 "%PYTHON%" -m pip -V >NUL 2>&1
 IF ERRORLEVEL 1 (
@@ -119,7 +119,7 @@ IF ERRORLEVEL 1 (
 
 EXIT /B 0
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 :INSTALL_REQUIREMENTS
 SETLOCAL EnableExtensions
 SET "REQUIRE_FILE=%~1"
@@ -145,7 +145,7 @@ IF ERRORLEVEL 1 (
 
 ENDLOCAL & EXIT /B 0
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 :INSTALL_EDITABLE
 CALL :PRINT_LINE "   Install editable version (venv)"
 
@@ -160,7 +160,7 @@ IF ERRORLEVEL 1 (
 
 EXIT /B 0
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 :PYTHON_SETUP
 SETLOCAL EnableExtensions
 SET "SETUP_ACTION=%~1"
@@ -179,7 +179,7 @@ IF ERRORLEVEL 1 (
 
 ENDLOCAL & EXIT /B 0
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 :PYTHON_LAUNCHER
 REM Usage: CALL common.bat :PYTHON_LAUNCHER "<script.py>" [args...]
 CALL :INIT_PYTHON
@@ -207,7 +207,7 @@ SET "RC=%ERRORLEVEL%"
 ENDLOCAL & EXIT /B %RC%
 
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 :PYTHON_FROM_MAKE
 REM Called as: :PYTHON_FROM_MAKE python file.py [args...]
 CALL :INIT_PYTHON
@@ -237,4 +237,4 @@ ENDLOCAL & EXIT /B %RC%
 REM %1 = file, %2.. = remaining args
 CALL :PYTHON_LAUNCHER "%~1" %2 %3 %4 %5 %6 %7 %8 %9
 EXIT /B %ERRORLEVEL%
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------

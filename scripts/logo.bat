@@ -5,24 +5,24 @@ REM ===========================================================================
 
 SETLOCAL EnableExtensions
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 REM logo.bat
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 REM This script exposes utility labels (functions) related to logo display.
 REM It is designed to be called from another batch script using:
 REM   CALL logo.bat :PRINT_LOGO
 REM
 REM It relies on common.bat for all output operations (PRINT_LINE),
 REM in order to centralize console formatting and encoding logic.
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 REM Entry point / command dispatcher
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 REM The first argument is expected to be the name of a label (function).
 REM The label may optionally be prefixed with ':'.
 REM Remaining arguments are forwarded to the label.
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 
 IF "%~1"=="" (
   ECHO Usage: %~nx0 PRINT_LOGO
@@ -39,13 +39,13 @@ SHIFT
 CALL :%CMD% %1 %2 %3 %4 %5 %6 %7 %8 %9
 EXIT /B %ERRORLEVEL%
 
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 REM PRINT_LOGO
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 REM Displays the ASCII logo using PRINT_LINE from common.bat.
 REM The logo is intentionally printed line by line to preserve alignment
 REM and allow centralized formatting / encoding handling in common.bat.
-REM -----------------------------------------------------------------------------
+REM ---------------------------------------------------------------------------
 
 :PRINT_LOGO
 SETLOCAL

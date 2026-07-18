@@ -1,4 +1,8 @@
-@ECHO OFF
+@ECHO off
+REM ===========================================================================
+REM                   Author: Florent TOURNOIS | License: MIT                  
+REM ===========================================================================
+
 SETLOCAL EnableExtensions
 
 REM ---------------------------------------------------------------------------
@@ -162,6 +166,9 @@ EXIT /B 0
 
 REM ---------------------------------------------------------------------------
 :PYTHON_SETUP
+CALL :INIT_PYTHON
+IF ERRORLEVEL 1 EXIT /B 1
+
 SETLOCAL EnableExtensions
 SET "SETUP_ACTION=%~1"
 

@@ -1,16 +1,7 @@
 {
 	"folders": [
 		{
-			"path": "."
-		},
-		{
 			"path": "../pymdtools"
-		},
-		{
-			"path": "../guichet-entreprises.fr"
-		},
-		{
-			"path": "../guichet-qualifications.fr"
 		}
 	],
 	"settings": {

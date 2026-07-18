@@ -444,6 +444,16 @@ def send_email(conf):
         logging.warning("there is no 'to' in the conf")
         return conf
     
+    if ('not_to' not in conf) and ('list' not in conf['not_to']):
+        conf['to']['list'] = \
+            [item for item in conf['to']['list'] if item not in conf['not_to']['list']]
+        if 'cc' in conf and isinstance(conf['cc'], dict) and 'list' in conf['cc']:
+            conf['cc']['list'] = \
+                [item for item in conf['cc']['list'] if item not in conf['not_to']['list']]
+        if 'Bcc' in conf and isinstance(conf['Bcc'], dict) and 'list' in conf['Bcc']:
+            conf['Bcc']['list'] = \
+                [item for item in conf['Bcc']['list'] if item not in conf['not_to']['list']]
+
     # search the cid
     cid={}
     search_folder = [conf['paths']['img']] + conf['paths']['base_search']

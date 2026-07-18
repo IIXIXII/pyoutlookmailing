@@ -44,6 +44,12 @@ TITLE [%MODULE%] MAKE %ARGUMENT%
 IF /I "%ARGUMENT%"=="requirements" (
   CALL "%FUN%" :INSTALL_REQUIREMENTS "requirements.txt"
   IF ERRORLEVEL 1 GOTO :FAILED
+) ELSE IF /I "%ARGUMENT%"=="requirements-dev" (
+  CALL "%FUN%" :INSTALL_REQUIREMENTS "requirements-dev.txt"
+  IF ERRORLEVEL 1 GOTO :FAILED
+) ELSE IF /I "%ARGUMENT%"=="requirements-docs" (
+  CALL "%FUN%" :INSTALL_REQUIREMENTS "requirements-docs.txt"
+  IF ERRORLEVEL 1 GOTO :FAILED
 ) ELSE IF /I "%ARGUMENT%"=="install_editable" (
   CALL "%FUN%" :INSTALL_EDITABLE
   IF ERRORLEVEL 1 GOTO :FAILED

@@ -25,7 +25,7 @@
       <td align="center" style="padding:12px;">
 
         <!-- Conteneur 800px -->
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="800" style="width:800px; background:#000f1e;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="800" style="width:800px; background:{% if bordercolor is defined %}{{ bordercolor }}{% else %}#000f1e{% endif %};">
           <!-- HERO -->
           <tr>
             <td style="padding:0; font-size:0; line-height:0;">
@@ -38,7 +38,7 @@
 
           <!-- Carte avec « contour » 10px par padding -->
           <tr>
-            <td bgcolor="#000f1e" style="padding:10px;">
+            <td bgcolor="{% if bordercolor is defined %}{{ bordercolor }}{% else %}#000f1e{% endif %}" style="padding:10px;">
               <!-- Table interne 780px, fond clair -->
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="780" style="width:780px; background:#FAFAFC;">
                 {% if banner is defined %}<tr>

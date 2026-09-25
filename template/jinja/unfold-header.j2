@@ -1,0 +1,115 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
++--------------------------------------------------------------------------- #}
+{#
+  Titres UNFOLD H1/H2/H3 et liseré néon dégradé.
+
+  Paramètres optionnels :
+    level                       1, 2 ou 3 (défaut 2)
+    mt / mb                     marges du titre en pixels
+    align                       left, center ou right
+    underline                  active le liseré (défaut true)
+    under_w / under_h           dimensions du liseré (défaut 240x3)
+    under_radius / under_align  rayon et alignement du liseré
+    c1..c4                      bleu, violet, magenta et ambre
+#}
+{%- set c1 = c1 | default('#5BB8FF', true) -%}
+{%- set c2 = c2 | default('#8F6BFF', true) -%}
+{%- set c3 = c3 | default('#E052C7', true) -%}
+{%- set c4 = c4 | default('#F0B36F', true) -%}
+
+{%- set _lvl = level if level is defined and level in [1, 2, 3] else 2 -%}
+{%- if _lvl == 1 -%}
+  {%- set _fz = 30 -%}
+  {%- set _lh = 38 -%}
+  {%- set _col = c1 -%}
+  {%- set _glow = 'rgba(91,184,255,0.42)' -%}
+  {%- set _dmt = 26 -%}
+  {%- set _dmb = 7 -%}
+  {%- set _dumb = 10 -%}
+{%- elif _lvl == 2 -%}
+  {%- set _fz = 24 -%}
+  {%- set _lh = 31 -%}
+  {%- set _col = c2 -%}
+  {%- set _glow = 'rgba(143,107,255,0.42)' -%}
+  {%- set _dmt = 22 -%}
+  {%- set _dmb = 6 -%}
+  {%- set _dumb = 8 -%}
+{%- else -%}
+  {%- set _fz = 20 -%}
+  {%- set _lh = 27 -%}
+  {%- set _col = c3 -%}
+  {%- set _glow = 'rgba(224,82,199,0.42)' -%}
+  {%- set _dmt = 18 -%}
+  {%- set _dmb = 5 -%}
+  {%- set _dumb = 6 -%}
+{%- endif -%}
+
+{%- set _mt = mt | default(_dmt) | int -%}
+{%- set _mb = mb | default(_dmb) | int -%}
+{%- set _align = align | default('left', true) -%}
+{%- set _under = underline if underline is defined else true -%}
+{%- set _uw = under_w | default(240) | int -%}
+{%- set _uh = under_h | default(3) | int -%}
+{%- set _ur = under_radius | default(4) | int -%}
+{%- set _ua = under_align | default(_align, true) -%}
+{%- set _umb = under_mb | default(_dumb) | int -%}
+{%- set _seg = (_uw / 4) | int -%}
+
+{%- set _hstyle -%}
+margin:{{ _mt }}px 0 {{ _mb }}px 0;
+padding:0;
+color:{{ _col }} !important;
+-webkit-text-fill-color:{{ _col }} !important;
+font-family:'Circular','Aptos','Segoe UI',Arial,Helvetica,sans-serif !important;
+font-size:{{ _fz }}px;
+line-height:{{ _lh }}px;
+font-weight:700;
+letter-spacing:-0.2px;
+text-align:{{ _align }};
+text-shadow:0 0 5px {{ _glow }};
+mso-line-height-rule:exactly;
+{%- endset -%}
+
+{%- macro underline_bar() -%}
+  <!--[if mso]>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 {{ _umb }}px 0; border-collapse:collapse;">
+    <tr>
+      <td align="{{ 'right' if _ua == 'right' else ('center' if _ua == 'center' else 'left') }}">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="{{ _uw }}" style="width:{{ _uw }}px; border-collapse:collapse;">
+          <tr style="height:{{ _uh }}px; line-height:{{ _uh }}px; font-size:0;">
+            <td width="{{ _seg }}" bgcolor="{{ c1 }}" style="width:{{ _seg }}px; height:{{ _uh }}px; background-color:{{ c1 }};"></td>
+            <td width="{{ _seg }}" bgcolor="{{ c2 }}" style="width:{{ _seg }}px; height:{{ _uh }}px; background-color:{{ c2 }};"></td>
+            <td width="{{ _seg }}" bgcolor="{{ c3 }}" style="width:{{ _seg }}px; height:{{ _uh }}px; background-color:{{ c3 }};"></td>
+            <td width="{{ _uw - (_seg * 3) }}" bgcolor="{{ c4 }}" style="width:{{ _uw - (_seg * 3) }}px; height:{{ _uh }}px; background-color:{{ c4 }};"></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    {% if _umb > 0 %}<tr>
+      <td height="{{ _umb }}" style="height:{{ _umb }}px; line-height:{{ _umb }}px; font-size:0; mso-line-height-rule:exactly;">&nbsp;</td>
+    </tr>{% endif %}
+  </table>
+  <![endif]-->
+  <!--[if !mso]><!-->
+  <div class="unfold-title-line"
+       style="width:{{ _uw }}px;
+              max-width:100%;
+              height:{{ _uh }}px;
+              border-radius:{{ _ur }}px;
+              margin:0 0 {{ _umb }}px 0;
+              {% if _ua == 'right' %}margin-left:auto;{% elif _ua == 'center' %}margin-left:auto; margin-right:auto;{% endif %}
+              background-color:{{ c2 }};
+              background-image:linear-gradient(90deg, {{ c1 }} 0%, {{ c2 }} 32%, {{ c3 }} 66%, {{ c4 }} 100%);
+              box-shadow:0 0 6px rgba(143,107,255,0.45), 0 0 8px rgba(224,82,199,0.18);"></div>
+  <!--<![endif]-->
+{%- endmacro -%}
+
+{%- if begin is defined -%}
+  <h{{ _lvl }} class="unfold-title unfold-title-{{ _lvl }}" style="{{ _hstyle }}">{{ text | safe }}</h{{ _lvl }}>
+  {%- if _under -%}{{ underline_bar() }}{%- endif -%}
+{%- endif -%}

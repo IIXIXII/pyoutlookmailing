@@ -1,0 +1,108 @@
+{#----------------------------------------------------------------------------+
+| Copyright © Florent TOURNOIS - All Rights Reserved
+|   All Rights Reserved.
+|   Unauthorized copying of this file, via any medium is strictly prohibited
+|   Dissemination of this information or reproduction of this material
+|   is strictly forbidden unless prior written permission is obtained
++--------------------------------------------------------------------------- #}
+{#
+  Bouton UNFOLD, avec contour néon progressif et cœur sombre.
+
+  Paramètres optionnels :
+    c1..c4          palette du dégradé
+    color           fond du bouton (compatibilité avec les anciens liens)
+    buttoncolor     fond du bouton si color n'est pas défini
+    buttontextcolor couleur du libellé
+    bordercolor     couleur de repli du contour sous Outlook
+    radius          rayon des angles (défaut 8px)
+    button_width    largeur VML sous Outlook (calculée depuis le libellé)
+    button_height   hauteur VML sous Outlook (défaut 48px)
+#}
+{%- if link is defined and link.url -%}
+  {%- set c1 = c1 | default('#5BB8FF', true) -%}
+  {%- set c2 = c2 | default('#8F6BFF', true) -%}
+  {%- set c3 = c3 | default('#E052C7', true) -%}
+  {%- set c4 = c4 | default('#F0B36F', true) -%}
+  {%- set _button_color = color if color is defined and color else (buttoncolor | default('#09070E', true)) -%}
+  {%- set _text_color = buttontextcolor | default('#FFFFFF', true) -%}
+  {%- set _frame_fallback = bordercolor | default(c2, true) -%}
+  {%- set _radius = radius | default(8) | int -%}
+  {%- set _label = link.name if link.name is defined and link.name else (link.title | default('Ouvrir', true)) -%}
+  {%- set _auto_width = 72 + ((_label | striptags | length) * 8) -%}
+  {%- if _auto_width < 180 -%}
+    {%- set _auto_width = 180 -%}
+  {%- elif _auto_width > 500 -%}
+    {%- set _auto_width = 500 -%}
+  {%- endif -%}
+  {%- set _button_width = button_width | default(_auto_width) | int -%}
+  {%- set _button_height = button_height | default(48) | int -%}
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" class="unfold-button" style="margin:18px auto 0 auto; padding:0; border-collapse:separate;">
+  <tr>
+    <td align="center">
+      <!--[if mso]>
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
+                   xmlns:w="urn:schemas-microsoft-com:office:word"
+                   href="{{ link.url }}"
+                   style="height:{{ _button_height }}px; v-text-anchor:middle; width:{{ _button_width }}px;"
+                   arcsize="17%"
+                   strokecolor="{{ _frame_fallback }}"
+                   strokeweight="1px"
+                   fillcolor="{{ _button_color }}">
+        <w:anchorlock/>
+        <center style="color:{{ _text_color }}; font-family:Arial,Helvetica,sans-serif; font-size:16px; font-weight:bold;">
+          {{ _label | striptags | e }}
+        </center>
+      </v:roundrect>
+      <![endif]-->
+      <!--[if !mso]><!-->
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">
+        <tr>
+          <td align="center"
+              bgcolor="{{ _frame_fallback }}"
+              style="padding:1px;
+                     border-radius:{{ _radius }}px;
+                     background-color:{{ _frame_fallback }};
+                     background-image:linear-gradient(90deg, {{ c1 }} 0%, {{ c2 }} 32%, {{ c3 }} 66%, {{ c4 }} 100%);
+                     box-shadow:0 0 10px rgba(91,184,255,0.30), 0 0 16px rgba(224,82,199,0.22), 0 0 20px rgba(240,179,111,0.14);">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;">
+              <tr>
+                <td align="center"
+                    bgcolor="{{ _button_color }}"
+                    class="button-td"
+                    style="border-radius:{{ _radius - 1 if _radius > 1 else 0 }}px;
+                           background-color:{{ _button_color }};
+                           background-image:linear-gradient(180deg, #201A36 0%, {{ _button_color }} 52%, #050508 100%);">
+                  <a href="{{ link.url }}"
+                     target="{% if link.target is defined and link.target %}{{ link.target }}{% else %}_blank{% endif %}"
+                     {% if link.title is defined and link.title %}title="{{ link.title | e }}"{% endif %}
+                     role="button"
+                     class="button-a"
+                     style="display:inline-block;
+                            padding:13px 28px;
+                            border-radius:{{ _radius - 1 if _radius > 1 else 0 }}px;
+                            color:{{ _text_color }} !important;
+                            -webkit-text-fill-color:{{ _text_color }} !important;
+                            font-family:'Circular','Aptos','Segoe UI',Arial,Helvetica,sans-serif;
+                            font-size:16px;
+                            font-weight:700;
+                            line-height:20px;
+                            letter-spacing:0.2px;
+                            text-align:center;
+                            text-decoration:none !important;
+                            mso-line-height-rule:exactly;">
+                    <span class="button-link" style="color:{{ _text_color }} !important; -webkit-text-fill-color:{{ _text_color }} !important; text-decoration:none !important;">{{ _label }}</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      <!--<![endif]-->
+    </td>
+  </tr>
+  <tr>
+    <td height="18" style="height:18px; line-height:18px; font-size:0; mso-line-height-rule:exactly;">&nbsp;</td>
+  </tr>
+</table>
+{%- endif -%}

@@ -446,6 +446,9 @@ class RendererFi(RendererDefault, ContextManagment):
 ###############################################################################
 class RendererApt(RendererDefault, ContextManagment):
 
+    # Prefix used for the Jinja components of this renderer.
+    template_prefix = 'apt'
+
     ###########################################################################
     # generate a renderer
     #
@@ -494,7 +497,8 @@ class RendererApt(RendererDefault, ContextManagment):
                 context[inst]=False
 
         (begin, end) = get_render_couple(
-            self.jinja_env.get_template("apt-header.j2"), context)
+            self.jinja_env.get_template(
+                self.template_prefix + "-header.j2"), context)
 
         self.del_instructions()
         return (begin, end)
@@ -516,7 +520,85 @@ class RendererApt(RendererDefault, ContextManagment):
         if 'mb' in inst:
             context['mb']=inst['mb']
 
-        return self.jinja_env.get_template("apt-"+inst['p']+".j2").render(context)
+        return self.jinja_env.get_template(
+            self.template_prefix + "-" + inst['p'] + ".j2").render(context)
+
+
+###############################################################################
+# UNFOLD renderer: same Markdown conventions as APTITUDE, with its own Jinja
+# components and a shared context for links (notably the neon palette).
+###############################################################################
+class RendererUnfold(RendererApt):
+
+    template_prefix = 'unfold'
+
+    ###########################################################################
+    # Generate and register the renderer.
+    ###########################################################################
+    @staticmethod
+    def generate(**kwargs):
+        return RendererUnfold(jinja_env=kwargs['jinja_env'],
+                              context=kwargs['context'])
+
+    __register = \
+        RendererGenerator.register('model:unfold', generate.__func__) and \
+        RendererGenerator.register('model-unfold', generate.__func__)
+
+    ###########################################################################
+    # Keep the Outlook conditional comments emitted by the button template.
+    # RendererApt.paragraph() normally strips comments because they may carry
+    # Markdown instructions; doing so here would also remove the VML fallback.
+    ###########################################################################
+    def paragraph(self, text):
+        if re.match(
+                r'^\s*<table\b[^>]*\bclass\s*=\s*["\'][^"\']*'
+                r'\bunfold-button\b',
+                text,
+                flags=re.IGNORECASE | re.DOTALL):
+            return text.strip()
+
+        return super().paragraph(text)
+
+    ###########################################################################
+    # Render bare URLs and e-mail autolinks with the same forced white style
+    # as regular Markdown links. Other renderers keep Mistune's exact output.
+    ###########################################################################
+    def autolink(self, link, is_email=False):
+        href = ('mailto:' + link) if is_email else link
+        context = self.context
+        context['link'] = {
+            'url': mistune.escape_link(href),
+            'name': mistune.escape(link)
+        }
+
+        return self.jinja_env.get_template(
+            "unfold-link-normal.j2").render(context)
+
+    ###########################################################################
+    # Render links with the global UNFOLD context so c1..c4/bordercolor can be
+    # shared by headings and buttons. Inline link instructions keep priority.
+    ###########################################################################
+    def link(self, link, title, text):
+        instructions = read_instructions(text)
+        text = strip_xml_comment(text)
+        context = self.context
+
+        for key in instructions:
+            context[key] = instructions[key]
+
+        context['link'] = {
+            'url': mistune.escape_link(link),
+            'name': text
+        }
+        if title is not None:
+            context['link']['title'] = title
+
+        if 'link-model' not in context:
+            return self.jinja_env.get_template(
+                "unfold-link-normal.j2").render(context)
+
+        return self.jinja_env.get_template(
+            context['link-model'] + ".j2").render(context)
 
 
 # ###############################################################################
@@ -863,7 +945,11 @@ class RendererDispatch(mistune.Renderer):
     # @param is_email: whether this is an email or not.
     ###########################################################################
     def autolink(self, link, is_email=False):
-        return mistune.Renderer.autolink(self, link, is_email=is_email)
+        method = self.get_renderer_method('autolink')
+        if method is None:
+            return mistune.Renderer.autolink(
+                self, link, is_email=is_email)
+        return method(link, is_email=is_email)
 
     ###########################################################################
     # Rendering a given link with content and title.

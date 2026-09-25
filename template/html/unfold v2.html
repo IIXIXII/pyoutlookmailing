@@ -1,0 +1,303 @@
+{%- set _border_color = bordercolor | default('#eeb961', true) -%}
+{%- if outercolor is defined and outercolor -%}
+  {%- set _outer_color = outercolor -%}
+{%- elif outsidecolor is defined and outsidecolor -%}
+  {%- set _outer_color = outsidecolor -%}
+{%- else -%}
+  {%- set _outer_color = '#000000' -%}
+{%- endif -%}
+<!DOCTYPE html>
+<html lang="fr" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ subject }}</title>
+  <style>
+    :root { color-scheme:dark; supported-color-schemes:dark; }
+    html, body {
+      margin:0 !important;
+      padding:0 !important;
+      min-width:100% !important;
+      height:100% !important;
+      background-color:{{ _outer_color }} !important;
+      color:#ffffff !important;
+    }
+    table {
+      border-collapse:collapse;
+      border-spacing:0;
+      mso-table-lspace:0pt;
+      mso-table-rspace:0pt;
+    }
+    img {
+      border:0;
+      line-height:100%;
+      outline:none;
+      text-decoration:none;
+      -ms-interpolation-mode:bicubic;
+    }
+
+    .bg-page,
+    .bg-wrap {
+      background-color:{{ _outer_color }} !important;
+      background-image:linear-gradient({{ _outer_color }}, {{ _outer_color }}) !important;
+    }
+    .bg-frame {
+      background-color:{{ _border_color }} !important;
+      background-image:linear-gradient({{ _border_color }}, {{ _border_color }}) !important;
+    }
+    .bg-card {
+      background-color:#000000 !important;
+      background-image:linear-gradient(#000000, #000000) !important;
+    }
+
+    .txt-main,
+    .txt-main *,
+    .txt-main p,
+    .txt-main div,
+    .txt-main span,
+    .txt-main li,
+    .txt-main strong,
+    .txt-main b,
+    .txt-main em,
+    .txt-main i,
+    .txt-main h1,
+    .txt-main h2,
+    .txt-main h3,
+    .txt-main h4,
+    .txt-main h5,
+    .txt-main h6,
+    .txt-main td {
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+      font-family:'Circular','Aptos','Segoe UI',Arial,Helvetica,sans-serif !important;
+    }
+    .txt-main h1,
+    .txt-main h2,
+    .txt-main h3,
+    .txt-main h4,
+    .txt-main h5,
+    .txt-main h6 { font-weight:700 !important; }
+    .txt-main a,
+    .txt-main a:link,
+    .txt-main a:visited,
+    .txt-main a:hover,
+    .txt-main a:active,
+    .txt-main a[x-apple-data-detectors] {
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+      text-decoration:underline !important;
+      text-decoration-color:#ffffff !important;
+    }
+    .txt-main span.MsoHyperlink,
+    .txt-main span.MsoHyperlinkFollowed {
+      mso-style-priority:99;
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+      text-decoration:underline !important;
+    }
+    .txt-main .button-td a,
+    .txt-main .button-link,
+    .txt-main a .button-link,
+    .txt-main .button-td span.MsoHyperlink,
+    .txt-main .button-td span.MsoHyperlinkFollowed {
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+      text-decoration:none !important;
+    }
+
+    @media (prefers-color-scheme:dark) {
+      .bg-page,
+      .bg-wrap {
+        background-color:{{ _outer_color }} !important;
+        background-image:linear-gradient({{ _outer_color }}, {{ _outer_color }}) !important;
+      }
+      .bg-frame {
+        background-color:{{ _border_color }} !important;
+        background-image:linear-gradient({{ _border_color }}, {{ _border_color }}) !important;
+      }
+      .bg-card { background-color:#000000 !important; }
+      .txt-main,
+      .txt-main *,
+      .txt-main p,
+      .txt-main div,
+      .txt-main span,
+      .txt-main li,
+      .txt-main strong,
+      .txt-main em,
+      .txt-main h1,
+      .txt-main h2,
+      .txt-main h3,
+      .txt-main h4,
+      .txt-main h5,
+      .txt-main h6,
+      .txt-main td {
+        color:#ffffff !important;
+        -webkit-text-fill-color:#ffffff !important;
+      }
+    }
+
+    [data-ogsc] .bg-page,
+    [data-ogsc] .bg-wrap,
+    [data-ogsb] .bg-page,
+    [data-ogsb] .bg-wrap {
+      background-color:{{ _outer_color }} !important;
+      background-image:linear-gradient({{ _outer_color }}, {{ _outer_color }}) !important;
+    }
+    [data-ogsc] .bg-frame,
+    [data-ogsb] .bg-frame {
+      background-color:{{ _border_color }} !important;
+      background-image:linear-gradient({{ _border_color }}, {{ _border_color }}) !important;
+    }
+    [data-ogsc] .bg-card,
+    [data-ogsb] .bg-card { background-color:#000000 !important; }
+    [data-ogsc] .txt-main,
+    [data-ogsc] .txt-main *,
+    [data-ogsc] .txt-main p,
+    [data-ogsc] .txt-main div,
+    [data-ogsc] .txt-main span,
+    [data-ogsc] .txt-main li,
+    [data-ogsc] .txt-main h1,
+    [data-ogsc] .txt-main h2,
+    [data-ogsc] .txt-main h3,
+    [data-ogsc] .txt-main h4,
+    [data-ogsc] .txt-main h5,
+    [data-ogsc] .txt-main h6,
+    [data-ogsc] .txt-main td {
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+    }
+    [data-ogsc] .txt-main a,
+    [data-ogsc] .txt-main a:visited,
+    [data-ogsb] .txt-main a,
+    [data-ogsb] .txt-main a:visited {
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+      text-decoration:underline !important;
+      text-decoration-color:#ffffff !important;
+    }
+    [data-ogsc] .txt-main .button-td a,
+    [data-ogsc] .txt-main .button-link,
+    [data-ogsb] .txt-main .button-td a,
+    [data-ogsb] .txt-main .button-link {
+      color:#ffffff !important;
+      -webkit-text-fill-color:#ffffff !important;
+      text-decoration:none !important;
+    }
+    .txt-main .unfold-title *,
+    .txt-main .unfold-normal * {
+      color:inherit !important;
+      -webkit-text-fill-color:inherit !important;
+    }
+
+    @media screen and (max-width:840px) {
+      .email-frame,
+      .email-card,
+      .content-card { width:100% !important; }
+      .fluid-image {
+        width:100% !important;
+        max-width:100% !important;
+        height:auto !important;
+      }
+      .content-gutter { padding:0 9px 9px 9px !important; }
+      .content-cell { padding:28px 24px !important; }
+    }
+  </style>
+  <!--[if mso]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  <style type="text/css">
+    body, table, td, p, a, li, h1, h2, h3, h4, h5, h6, span {
+      font-family:Arial,Helvetica,sans-serif !important;
+    }
+  </style>
+  <![endif]-->
+</head>
+<body class="body bg-page" bgcolor="{{ _outer_color }}" style="margin:0; padding:0; background-color:{{ _outer_color }}; background-image:linear-gradient({{ _outer_color }}, {{ _outer_color }}); color:#ffffff;">
+  <!-- Préheader masqué -->
+  <div style="display:none!important;visibility:hidden;opacity:0;overflow:hidden;max-height:0;max-width:0;font-size:1px;line-height:1px;color:{{ _outer_color }};mso-hide:all;">
+    {{ summary }}&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+  </div>
+
+  <!-- Fond extérieur paramétrable -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{{ _outer_color }}" class="bg-wrap" style="width:100%; background-color:{{ _outer_color }}; background-image:linear-gradient({{ _outer_color }}, {{ _outer_color }});">
+    <tr>
+      <td align="center" bgcolor="{{ _outer_color }}" class="bg-wrap" style="padding:12px; background-color:{{ _outer_color }}; background-image:linear-gradient({{ _outer_color }}, {{ _outer_color }});">
+
+        <!-- Cadre 800px : liseré de 1px autour du hero et du contenu -->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="800" bgcolor="{{ _border_color }}" class="email-frame bg-frame" style="width:800px; background-color:{{ _border_color }}; background-image:linear-gradient({{ _border_color }}, {{ _border_color }});">
+          <tr>
+            <td bgcolor="{{ _border_color }}" class="bg-frame" style="padding:1px; background-color:{{ _border_color }}; background-image:linear-gradient({{ _border_color }}, {{ _border_color }});">
+              <!-- Carte noire 798px -->
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="798" bgcolor="#000000" class="email-card bg-card" style="width:798px; background-color:#000000; background-image:linear-gradient(#000000, #000000);">
+                <!-- HERO -->
+                <tr>
+                  <td bgcolor="#000000" class="bg-card" style="padding:0; font-size:0; line-height:0; background-color:#000000;">
+                    <img src="cid:{% if hero is defined and hero %}{{ hero }}{% else %}unfold_800.png{% endif %}"
+                         width="798"
+                         alt="UNFOLD — Shape what's next"
+                         class="fluid-image"
+                         style="display:block; width:798px; max-width:100%; height:auto; border:0; background-color:#000000; color:#ffffff;">
+                  </td>
+                </tr>
+
+                <!-- Corps : une gouttière noire conserve la largeur 780px des visuels secondaires -->
+                <tr>
+                  <td bgcolor="#000000" class="content-gutter bg-card" style="padding:0 9px 9px 9px; background-color:#000000;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="780" bgcolor="#000000" class="content-card bg-card" style="width:780px; background-color:#000000; background-image:linear-gradient(#000000, #000000);">
+                      {% if banner is defined and banner %}<tr>
+                        <td align="left" bgcolor="#000000" class="bg-card" style="padding:0; margin:0; font-size:0; line-height:0; background-color:#000000;">
+                          <img src="cid:{{ banner }}"
+                               width="780"
+                               alt=""
+                               class="fluid-image"
+                               style="display:block; width:780px; max-width:100%; height:auto; border:0; background-color:#000000;">
+                        </td>
+                      </tr>{% endif %}
+
+                      <!-- Texte blanc sur fond noir -->
+                      <tr>
+                        <td bgcolor="#000000" class="content-cell txt-main bg-card" style="padding:40px; background-color:#000000; font-family:'Circular','Aptos','Segoe UI',Arial,Helvetica,sans-serif; font-size:18px; line-height:1.55; color:#ffffff; mso-line-height-rule:exactly;">
+                          {{ content | safe }}
+                          <div style="margin-top:24px; font-size:16px; line-height:1.45; color:#ffffff;">
+                            <p style="margin:0 0 4px 0; font-weight:600; color:#ffffff;">
+                              {% if author is defined and author %}{{ author }}{% else %}Florent TOURNOIS{% endif %}
+                            </p>
+                            <p style="margin:0; color:#ffffff;">
+                              <span style="font-style:italic; color:#ffffff; font-size:15px;">
+                                {% if role is defined and role %}{{ role }}{% else %}{% endif %}
+                              </span>
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {% if skyline is defined %}<tr>
+                        <td align="left" bgcolor="#000000" class="bg-card" style="padding:0; margin:0; font-size:0; line-height:0; background-color:#000000;">
+                          <img src="cid:{% if sky is defined and sky %}{{ sky }}{% else %}skyline_paris_780.png{% endif %}"
+                               width="780"
+                               alt=""
+                               class="fluid-image"
+                               style="display:block; width:780px; max-width:100%; height:auto; border:0; background-color:#000000;">
+                        </td>
+                      </tr>{% endif %}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

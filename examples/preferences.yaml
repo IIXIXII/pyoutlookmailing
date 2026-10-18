@@ -1,0 +1,22 @@
+# Import with: python -m pyoutlookmailing.preferences --import examples/preferences.yaml
+# Set your sender here before importing, or leave it out to use Outlook's default.
+# from: sender@example.org
+paths:
+  root: ../
+  jinja: template/jinja
+  template: template/html
+  img: template/img
+email:
+  template: email.html
+profiles:
+  ebw:
+    email:
+      template: std3.html
+  aptitude:
+    email:
+      template: aptitude vff.html
+      model: apt
+  unfold:
+    email:
+      template: unfold v2.html
+      model: unfold

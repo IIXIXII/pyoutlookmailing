@@ -1,217 +1,215 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-###############################################################################
-# @copyright Copyright (C) Florent TOURNOIS - All Rights Reserved
-# 	All Rights Reserved.
-# 	Unauthorized copying of this file, via any medium is strictly prohibited
-# 	Dissemination of this information or reproduction of this material
-# 	is strictly forbidden unless prior written permission is obtained
-# 	from Florent TOURNOIS.
-###############################################################################
+# =============================================================================
+# Author: Florent TOURNOIS | License: MIT
+# =============================================================================
 
-###############################################################################
-# standard object to wrap file and access easily to the filename
-#
-###############################################################################
+"""Render trusted Markdown emails with Mistune 3 and Jinja templates."""
 
-import re
-import copy
+from __future__ import annotations
+
 import base64
-from stringcase import snakecase, camelcase
-import pymdtools.mistunege as mistune
+import copy
+import re
+from collections.abc import Callable
+from html import unescape
+from itertools import count
+from mimetypes import guess_type
+from urllib.parse import unquote
+
 import pymdtools.common as common
+from markupsafe import Markup
+from pymdtools import mistune_integration as mistune
 
-###############################################################################
-# re expression used for comment
-###############################################################################
-__comment_re__ = \
-    r"<!--(?P<comment>[\s\S]*?)-->"
+from .files import find_file
 
-###############################################################################
-# re expression used for instruction
-###############################################################################
+__comment_re__ = r"<!--(?P<comment>[\s\S]*?)-->"
+
 __instruction_re__ = r"(?P<name>[a-zA-Z0-9_-]+)\s*[:=]\s*(?P<value>.*)"
+
+_id_counter = count(1)
 
 
 # -----------------------------------------------------------------------------
 def encode_img(filename):
-    filename = common.check_is_file_and_correct_path(filename)
-    image_file = open(filename, 'rb').read()
+    """Read an existing local file and return its ASCII-compatible Base64 text.
+
+    The filename is a string or path-like object. File validation and reading
+    errors propagate; no MIME prefix or HTML tag is included in the result.
+    """
+    filename = common.check_file(filename)
+    image_file = filename.read_bytes()
     return base64.b64encode(image_file).decode("utf-8")
+
 
 # -----------------------------------------------------------------------------
 def html_img(filename):
-    return '<img src="data:image/png;base64,%s"/>' % encode_img(filename)
+    """Return an HTML img tag containing the local file as a data URL.
+
+    Infer the MIME type from the filename, falling back to
+    application/octet-stream. The file is read immediately and
+    missing/unreadable file errors propagate.
+    """
+    mime = guess_type(str(filename))[0] or "application/octet-stream"
+    return f'<img src="data:{mime};base64,{encode_img(filename)}"/>'
 
 
-###############################################################################
-# get new identifier for the nash standalone form
-#
-# @param label a string for inspiration
-# @return An id
-###############################################################################
-@common.static(__id_counter__=None)
-def get_new_id(label=None):
-    if get_new_id.__id_counter__ is None:
-        get_new_id.__id_counter__ = 0
+# -----------------------------------------------------------------------------
+def get_new_id(label: str | None = None) -> str:
+    """Return a process-local HTML identifier using a label and an increasing
+    counter.
 
-    get_new_id.__id_counter__ = 1 + get_new_id.__id_counter__
-
+    The optional label is converted to an ASCII slug, stripped of separators,
+    and truncated to ten characters. The counter is shared across calls and
+    starts at 1.
+    """
+    identifier = next(_id_counter)
     result = label
 
     if result is None:
         result = "id"
 
     result = common.to_ascii(result)
-    result = camelcase(snakecase(result))
+    result = common.slugify(result).replace("-", "")
     result = result.replace("_", "")
-    result = "id%s%04d" % (result[:10], get_new_id.__id_counter__)
+    result = f"id{result[:10]}{identifier:04d}"
 
     return result
 
-###############################################################################
-# strip XML comment.
-# Remove all xml comment from a text
-#
-# @param text the markdown text
-# @return the text without xml comment
-###############################################################################
+
+# -----------------------------------------------------------------------------
 def strip_xml_comment(text):
+    """Remove all HTML/XML comments from text, including multiline comments."""
     result = re.sub(__comment_re__, "", text)
     return result
 
-###############################################################################
-# get comment from text.
-#
-# @param text the markdown text
-# @return the lines
-###############################################################################
+
+# -----------------------------------------------------------------------------
 def read_instructions(text):
+    """Read name=value or name:value instructions from HTML comments.
+
+    Return lowercase names with string values. Later occurrences replace earlier
+    ones. This renderer syntax is distinct from the var(...) configuration
+    syntax.
+    """
     result = {}
     comments = re.finditer(__comment_re__, text)
     for comment in comments:
-        line = comment.group('comment').strip()
+        line = comment.group("comment").strip()
         match = re.search(__instruction_re__, line)
         if match is not None:
-            result[match.group('name').lower()] = match.group('value')
+            result[match.group("name").lower()] = match.group("value")
     return result
 
-###############################################################################
-# get comment from text.
-#
-# @param text the markdown text
-# @return the lines
-###############################################################################
-def get_render_couple(template, context):
-    context['begin'] = ''
-    begin = template.render(context)
 
-    del context['begin']
-    context['end'] = ''
-    end = template.render(context)
+# -----------------------------------------------------------------------------
+def get_render_couple(template, context):
+    """Render a Jinja template twice to obtain opening and closing HTML
+    fragments.
+
+    Pass begin="" for the first render and end="" for the second, discarding any
+    existing begin/end keys in the supplied context. Return (begin_html,
+    end_html) without changing the input context.
+    """
+    context = {
+        key: value
+        for key, value in context.items()
+        if key not in {"begin", "end"}
+    }
+    begin = template.render({**context, "begin": ""})
+    end = template.render({**context, "end": ""})
 
     return (begin, end)
 
 
-###############################################################################
-# Render generator
-###############################################################################
 class RendererGenerator:
+    """Map case-insensitive renderer names to factory callables."""
 
-    ###########################################################################
-    # the dict generator
-    ###########################################################################
-    __generator = {}
+    __generator: dict[str, Callable[..., RendererDefault]] = {}
 
-    ###########################################################################
-    # test a name
-    #
-    # @param name the name of the generator
-    # @param result of the test
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @staticmethod
-    def is_renderer(name):
+    def is_renderer(name: str) -> bool:
+        """Return whether a renderer factory is registered under name,
+        ignoring case.
+        """
         return name.lower() in RendererGenerator.__generator
 
-    ###########################################################################
-    # register a new generator
-    #
-    # @param name the name of the generator
-    # @param creator the function to create the renderer
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @staticmethod
-    def register(name, creator):
+    def register(name: str, creator: Callable[..., RendererDefault]) -> bool:
+        """Register or replace a renderer factory and return True.
+
+        The creator callable receives the keyword arguments passed to create and
+        returns a RendererDefault-compatible instance. Registration changes
+        global state.
+        """
         RendererGenerator.__generator[name.lower()] = creator
         return True
 
-    ###########################################################################
-    # generate a renderer
-    #
-    # @param name the name of the generator
-    # @return the renderer
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @staticmethod
-    def create(name, **kwargs):
+    def create(name: str, **kwargs) -> RendererDefault:
+        """Call a registered factory with kwargs; raise KeyError for an
+        unknown name.
+        """
         return RendererGenerator.__generator[name.lower()](**kwargs)
 
 
-###############################################################################
-# An object to manage the context of a page
-###############################################################################
 class ContextManagment:
-    ###########################################################################
-    # initialisation with the context
-    #
-    # @param the context
-    ###########################################################################
+    """Combine base context, initial instructions, and current instructions.
+
+    The historical class spelling is retained for compatibility. Reading context
+    returns a deep copy with instruction overrides; the stored mappings remain
+    mutable.
+    """
+
+    # --------------------------------------------------------------------------
     def __init__(self, context):
+        """Store the base context by reference and initialize empty
+        instruction mappings.
+        """
         self.__context = context
         self.__init_instructions = {}
         self.__instructions = {}
 
-    ###########################################################################
-    # the instrcution environment
-    # @return the value
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @property
     def init_instructions(self):
+        """Return the mutable initial-instruction mapping."""
         return self.__init_instructions
 
-    ###########################################################################
-    # the instrcution environment
-    # @param value The value to set
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @init_instructions.setter
     def init_instructions(self, value):
+        """Replace the initial-instruction mapping by reference."""
         self.__init_instructions = value
 
-    ###########################################################################
-    # the instrcution environment
-    # @return the value
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @property
     def instructions(self):
+        """Return the mutable current-instruction mapping."""
         return self.__instructions
 
-    ###########################################################################
-    # the instrcution environment
-    # @param value The value to set
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @instructions.setter
     def instructions(self, value):
+        """Replace the current-instruction mapping by reference."""
         self.__instructions = value
 
-    ###########################################################################
-    # empty the instructions list
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def del_instructions(self):
+        """Clear current instructions while retaining initial instructions
+        and base context.
+        """
         self.__instructions = {}
 
-    ###########################################################################
-    # Build the complet context with instruction
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @property
     def context(self):
+        """Return a deep copy with initial then current instructions
+        overriding base values.
+        """
         result = copy.deepcopy(self.__context)
         for key in self.__init_instructions:
             result[key] = copy.deepcopy(self.__init_instructions[key])
@@ -220,365 +218,368 @@ class ContextManagment:
 
         return result
 
-###############################################################################
-# An object to wrap the mistune render
-###############################################################################
+
 class JinjaEnvManagment:
+    """Provide shared access to a Jinja environment for component renderers.
+
+    The historical class spelling is retained for compatibility.
+    """
+
+    # --------------------------------------------------------------------------
     def __init__(self, jinja_env):
+        """Store the supplied Jinja environment by reference."""
         self.__jinja_env = jinja_env
 
+    # --------------------------------------------------------------------------
     @property
     def jinja_env(self):
+        """Return the Jinja environment used to load component templates."""
         return self.__jinja_env
 
 
-###############################################################################
-# An object to wrap the mistune render
-###############################################################################
 class RendererDefault(JinjaEnvManagment):
+    """Render basic email components using HTML and the default Jinja templates.
 
-    ###########################################################################
-    # generate a renderer
-    #
-    # @return the renderer
-    ###########################################################################
+    Header methods return opening/closing pairs; other methods return complete
+    HTML fragments. The dispatch adapter converts Mistune 3 calls to these
+    legacy component signatures. Text arguments already contain rendered inline
+    HTML.
+    """
+
+    # --------------------------------------------------------------------------
     @staticmethod
     def generate(**kwargs):
-        return RendererDefault(jinja_env=kwargs['jinja_env'])
+        """Create a default renderer from the required jinja_env keyword
+        argument.
+        """
+        return RendererDefault(jinja_env=kwargs["jinja_env"])
 
-    ###########################################################################
-    # register the renderer
-    ###########################################################################
-    __register = RendererGenerator.register('default', generate.__func__)
-
-    ###########################################################################
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def __init__(self, jinja_env):
+        """Initialize the component renderer with its Jinja environment."""
         JinjaEnvManagment.__init__(self, jinja_env)
 
-    ###########################################################################
-    # Rendering header/heading tags like ``<h1>`` ``<h2>``.
-    #
-    # @param text: rendered text content for the header.
-    # @param level: a number for the header level, for example: 1.
-    # @param raw: raw text content of the header.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def header(self, text, level, raw=None):
+        """Return opening/closing HTML for a heading of the supplied level.
+
+        Level 1 uses header_1.j2; other levels emit a complete heading and an
+        empty closing fragment. The legacy raw argument is accepted but unused.
+        """
         if level == 1:
             return self.header_1(text)
 
-        begin = '<h%d>%s</h%d>\n' % (level, text, level)
-        end = ''
+        begin = f"<h{level}>{text}</h{level}>\n"
+        end = ""
         return (begin, end)
 
-    ###########################################################################
-    # Rendering header/heading tags like ``<h1>`` ``<h2>``.
-    #
-    # @param text: rendered text content for the header.
-    # @param level: a number for the header level, for example: 1.
-    # @param raw: raw text content of the header.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def header_1(self, text):
+        """Render header_1.j2 as a pair of fragments with trusted inline
+        heading HTML.
+        """
         begin = self.jinja_env.get_template("header_1.j2").render(
-            {"begin": '', 'text': text})
+            {"begin": "", "text": Markup(text)}
+        )
         end = self.jinja_env.get_template("header_1.j2").render(
-            {"end": '', 'text': text})
+            {"end": "", "text": Markup(text)}
+        )
         return (begin, end)
 
-    ###########################################################################
-    # Rendering table element. Wrap header and body in it.
-    #
-    # @param header: header part of the table.
-    # @param body: body part of the table.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def table(self, header, body):
+        """Wrap rendered header/body rows in a table, honoring a header class
+        instruction.
+        """
         inst = read_instructions(header)
         header = strip_xml_comment(header)
 
         bclass = "table"
-        if 'class' in inst:
-            bclass = inst['class']
+        if "class" in inst:
+            bclass = inst["class"]
         return (
-            '<table class="%s">\n<thead>%s</thead>\n'
-            '<tbody>\n%s</tbody>\n</table>\n'
-        ) % (bclass, header, body)
+            f'<table class="{mistune.escape(bclass)}">\n'
+            f"<thead>{header}</thead>\n"
+            f"<tbody>\n{body}</tbody>\n</table>\n"
+        )
 
-    ###########################################################################
-    # Rendering paragraph tags. Like ``<p>``.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def paragraph(self, text):
+        """Wrap inline HTML in a paragraph, applying alert-start, alert-end,
+        and fa instructions.
+        """
         inst = read_instructions(text)
         text = strip_xml_comment(text)
         start_p = "<p>"
         end_p = "</p>"
-        if 'alert-start' in inst:
-            start_p = '<div class="alert alert-%s" '\
-                      'role="alert">' % inst['alert-start'] + start_p
+        if "alert-start" in inst:
+            start_p = (
+                '<div class="alert alert-{}" role="alert">'.format(
+                    mistune.escape(inst["alert-start"])
+                )
+                + start_p
+            )
 
-        if 'alert-end' in inst:
-            end_p = end_p + '</div>'
-        if 'fa' in inst:
-            start_p = start_p + '<i class="fa fa-%s"></i>  ' % inst['fa']
+        if "alert-end" in inst:
+            end_p = end_p + "</div>"
+        if "fa" in inst:
+            start_p = start_p + '<i class="fa fa-{}"></i>  '.format(
+                mistune.escape(inst["fa"])
+            )
 
-        return start_p + text.strip(' ') + end_p
+        return start_p + text.strip(" ") + end_p
 
-    ###########################################################################
-    # Rendering a image with title and text.
-    #
-    # @param src: source link of the image.
-    # @param title: title text of the image.
-    # @param text: alt text of the image.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def image(self, src, title, text):
+        """Render image.j2 from a URL, optional title, and rendered alternative
+        text.
+
+        Instructions in the alternative text become template variables. Presence
+        of inline resolves a local file under paths.conf_folder, paths.img, or
+        their img subfolders and embeds its Base64 data; otherwise the source
+        remains a URL. Missing local files raise FileNotFoundError.
+        """
         context = read_instructions(text)
         text = strip_xml_comment(text)
 
-        src = mistune.escape_link(src)
-        text = mistune.escape(text, quote=True)
-
-        context['src'] = mistune.escape_link(src)
-        context['alt'] = mistune.escape_link(text)
-        search_paths = [ self.jinja_env.globals['paths']['conf_folder']]
-        search_paths.append(self.jinja_env.globals['paths']['img'])
-        img_filename = common.search_for_file(
-            context['src'],
-            search_paths, ['./','img/'],1
-        )
-        context['base64']=encode_img(img_filename)
+        context["src"] = safe_link(src)
+        context["alt"] = unescape(text)
+        if "inline" in context:
+            paths = self.jinja_env.globals["paths"]
+            filename = find_file(
+                unquote(unescape(src)),
+                [paths.get("conf_folder", "."), paths.get("img", ".")],
+                ("", "img"),
+            )
+            context["base64"] = encode_img(filename)
+            context["mime"] = (
+                guess_type(str(filename))[0] or "application/octet-stream"
+            )
         if title:
-            context['title'] = mistune.escape(title, quote=True)
+            context["title"] = title
 
         result = self.jinja_env.get_template("image.j2").render(context)
         return result
 
-    ###########################################################################
-    # Rendering a given link with content and title.
-    #
-    # @param link: href link for ``<a>`` tag.
-    # @param title: title content for `title` attribute.
-    # @param text: text content for description.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def link(self, link, title, text):
+        """Render a URL, optional title, and inline HTML label through a link
+        template.
+
+        Use link_normal.j2 unless a link-model instruction names another .j2
+        template. The destination is processed by safe_link before entering the
+        Jinja context.
+        """
         context = read_instructions(text)
         text = strip_xml_comment(text)
 
-        context['link'] = {'url': mistune.escape_link(link), 'name': text}
+        context["link"] = {"url": safe_link(link), "name": Markup(text)}
         if title is not None:
-            context['link']['title'] = title
+            context["link"]["title"] = title
 
-        if 'link-model' not in context:
+        if "link-model" not in context:
             return self.jinja_env.get_template("link_normal.j2").render(context)
 
         return self.jinja_env.get_template(
-            context['link-model'] + ".j2").render(context)
+            context["link-model"] + ".j2"
+        ).render(context)
 
 
-###############################################################################
-# An object to wrap the mistune render
-###############################################################################
 class RendererFi(RendererDefault, ContextManagment):
+    """Render FI headings and paragraphs using fi_header.j2 and fi_*.j2
+    templates.
+    """
 
-    ###########################################################################
-    # generate a renderer
-    #
-    # @return the renderer
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @staticmethod
     def generate(**kwargs):
-        return RendererFi(jinja_env=kwargs['jinja_env'],
-                          context=kwargs['context'])
+        """Create an FI renderer from the required jinja_env and context
+        keywords.
+        """
+        return RendererFi(
+            jinja_env=kwargs["jinja_env"], context=kwargs["context"]
+        )
 
-    ###########################################################################
-    # register the renderer
-    ###########################################################################
-    __register = \
-        RendererGenerator.register('model:fi', generate.__func__) and \
-        RendererGenerator.register('model-fi', generate.__func__)
-
-    ###########################################################################
-    # init the callapsable
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def __init__(self, jinja_env, context):
+        """Initialize FI templates and the shared email context."""
         RendererDefault.__init__(self, jinja_env)
         ContextManagment.__init__(self, context)
 
-    ###########################################################################
-    # Rendering header/heading tags like ``<h1>`` ``<h2>``.
-    #
-    # @param text: rendered text content for the header.
-    # @param level: a number for the header level, for example: 1.
-    # @param raw: raw text content of the header.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def header(self, text, level, raw=None):
+        """Render an FI heading with local instructions and an empty closing
+        fragment.
+        """
         self.instructions = read_instructions(text)
         text = strip_xml_comment(text)
         context = self.context
 
-        context['level'] = level
-        context['text'] = text
+        context["level"] = level
+        context["text"] = Markup(text)
 
         (begin, end) = get_render_couple(
-            self.jinja_env.get_template("fi_header.j2"), context)
+            self.jinja_env.get_template("fi_header.j2"), context
+        )
 
         self.del_instructions()
-        return (begin, '')
+        return (begin, "")
 
-    ###########################################################################
-    # Rendering paragraph tags. Like ``<p>``.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def paragraph(self, text):
+        """Render fi_<p>.j2 (default: fi_normal.j2); omit empty paragraphs."""
         inst = read_instructions(text)
         text = strip_xml_comment(text)
         context = self.context
 
-        context['text'] = text.strip(' ')
-        if len(context['text']) == 0:
-            return ''
+        context["text"] = Markup(text).strip(" ")
+        if len(context["text"]) == 0:
+            return ""
 
-        if 'p' not in inst:
-            inst['p']='normal'
+        if "p" not in inst:
+            inst["p"] = "normal"
 
-        return self.jinja_env.get_template("fi_"+inst['p']+".j2").render(context)
+        return self.jinja_env.get_template("fi_" + inst["p"] + ".j2").render(
+            context
+        )
 
 
-###############################################################################
-# An object to wrap the mistune render
-###############################################################################
 class RendererApt(RendererDefault, ContextManagment):
+    """Render APTITUDE components, with template_prefix overridable by
+    subclasses.
+    """
 
     # Prefix used for the Jinja components of this renderer.
-    template_prefix = 'apt'
+    template_prefix = "apt"
 
-    ###########################################################################
-    # generate a renderer
-    #
-    # @return the renderer
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @staticmethod
     def generate(**kwargs):
-        return RendererApt(jinja_env=kwargs['jinja_env'],
-                          context=kwargs['context'])
+        """Create an APTITUDE renderer from jinja_env and context keywords."""
+        return RendererApt(
+            jinja_env=kwargs["jinja_env"], context=kwargs["context"]
+        )
 
-    ###########################################################################
-    # register the renderer
-    ###########################################################################
-    __register = \
-        RendererGenerator.register('model:apt', generate.__func__) and \
-        RendererGenerator.register('model-apt', generate.__func__)
-
-    ###########################################################################
-    # init the callapsable
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def __init__(self, jinja_env, context):
+        """Initialize the component renderer and its shared email context."""
         RendererDefault.__init__(self, jinja_env)
         ContextManagment.__init__(self, context)
 
-    ###########################################################################
-    # Rendering header/heading tags like ``<h1>`` ``<h2>``.
-    #
-    # @param text: rendered text content for the header.
-    # @param level: a number for the header level, for example: 1.
-    # @param raw: raw text content of the header.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def header(self, text, level, raw=None):
+        """Render a heading pair after interpreting boolean instruction strings.
+
+        Use <template_prefix>-header.j2. Local instructions override the email
+        context for this heading and are cleared afterwards. The raw argument is
+        unused.
+        """
         self.instructions = read_instructions(text)
         text = strip_xml_comment(text)
         context = self.context
 
-        context['level'] = level
-        context['text'] = text
+        context["level"] = level
+        context["text"] = Markup(text)
 
         for inst in self.instructions:
-            print(inst)
-            context[inst]= self.instructions[inst]
-            if context[inst].lower() in ('y', 'yes', 't', 'true', 'on', '1'):
-                context[inst]=True
-            if context[inst].lower() in ('n', 'no', 'f', 'false', 'off', '0'):
-                context[inst]=False
+            context[inst] = self.instructions[inst]
+            if context[inst].lower() in ("y", "yes", "t", "true", "on", "1"):
+                context[inst] = True
+            elif context[inst].lower() in ("n", "no", "f", "false", "off", "0"):
+                context[inst] = False
 
         (begin, end) = get_render_couple(
-            self.jinja_env.get_template(
-                self.template_prefix + "-header.j2"), context)
+            self.jinja_env.get_template(self.template_prefix + "-header.j2"),
+            context,
+        )
 
         self.del_instructions()
         return (begin, end)
 
-    ###########################################################################
-    # Rendering paragraph tags. Like ``<p>``.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def paragraph(self, text):
+        """Render <template_prefix>-<p>.j2 with normal as the default paragraph
+        style.
+
+        Pass the mb instruction as a margin override and omit empty paragraphs.
+        """
         inst = read_instructions(text)
         text = strip_xml_comment(text)
         context = self.context
 
-        context['text'] = text.strip(' ')
-        if len(context['text']) == 0:
-            return ''
+        context["text"] = Markup(text).strip(" ")
+        if len(context["text"]) == 0:
+            return ""
 
-        if 'p' not in inst:
-            inst['p']='normal'
-        if 'mb' in inst:
-            context['mb']=inst['mb']
+        if "p" not in inst:
+            inst["p"] = "normal"
+        if "mb" in inst:
+            context["mb"] = inst["mb"]
 
         return self.jinja_env.get_template(
-            self.template_prefix + "-" + inst['p'] + ".j2").render(context)
+            self.template_prefix + "-" + inst["p"] + ".j2"
+        ).render(context)
 
 
-###############################################################################
-# UNFOLD renderer: same Markdown conventions as APTITUDE, with its own Jinja
-# components and a shared context for links (notably the neon palette).
-###############################################################################
 class RendererUnfold(RendererApt):
+    """Render UNFOLD components with shared colors and Outlook-compatible
+    buttons.
+    """
 
-    template_prefix = 'unfold'
+    template_prefix = "unfold"
 
-    ###########################################################################
-    # Generate and register the renderer.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @staticmethod
     def generate(**kwargs):
-        return RendererUnfold(jinja_env=kwargs['jinja_env'],
-                              context=kwargs['context'])
+        """Create an UNFOLD renderer from jinja_env and context keywords."""
+        return RendererUnfold(
+            jinja_env=kwargs["jinja_env"], context=kwargs["context"]
+        )
 
-    __register = \
-        RendererGenerator.register('model:unfold', generate.__func__) and \
-        RendererGenerator.register('model-unfold', generate.__func__)
-
-    ###########################################################################
-    # Keep the Outlook conditional comments emitted by the button template.
-    # RendererApt.paragraph() normally strips comments because they may carry
-    # Markdown instructions; doing so here would also remove the VML fallback.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def paragraph(self, text):
+        """Preserve UNFOLD button tables and their Outlook conditional comments.
+
+        Other paragraphs use the APTITUDE-compatible paragraph logic with UNFOLD
+        templates.
+        """
         if re.match(
-                r'^\s*<table\b[^>]*\bclass\s*=\s*["\'][^"\']*'
-                r'\bunfold-button\b',
-                text,
-                flags=re.IGNORECASE | re.DOTALL):
+            r'^\s*<table\b[^>]*\bclass\s*=\s*["\'][^"\']*'
+            r"\bunfold-button\b",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        ):
             return text.strip()
 
         return super().paragraph(text)
 
-    ###########################################################################
-    # Render bare URLs and e-mail autolinks with the same forced white style
-    # as regular Markdown links. Other renderers keep Mistune's exact output.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def autolink(self, link, is_email=False):
-        href = ('mailto:' + link) if is_email else link
+        """Render a bare URL or email address with the UNFOLD link template.
+
+        Set is_email to prefix the destination with mailto:. This is a legacy
+        component hook; the Mistune 3 dispatch path normally calls link for
+        parsed autolinks.
+        """
+        href = ("mailto:" + link) if is_email else link
         context = self.context
-        context['link'] = {
-            'url': mistune.escape_link(href),
-            'name': mistune.escape(link)
+        context["link"] = {
+            "url": safe_link(href),
+            "name": Markup(mistune.escape(link)),
         }
 
-        return self.jinja_env.get_template(
-            "unfold-link-normal.j2").render(context)
+        return self.jinja_env.get_template("unfold-link-normal.j2").render(
+            context
+        )
 
-    ###########################################################################
-    # Render links with the global UNFOLD context so c1..c4/bordercolor can be
-    # shared by headings and buttons. Inline link instructions keep priority.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def link(self, link, title, text):
+        """Render a link using shared UNFOLD context, overridden by inline
+        instructions.
+
+        Use unfold-link-normal.j2 by default, or the link-model component when
+        provided.
+        """
         instructions = read_instructions(text)
         text = strip_xml_comment(text)
         context = self.context
@@ -586,433 +587,262 @@ class RendererUnfold(RendererApt):
         for key in instructions:
             context[key] = instructions[key]
 
-        context['link'] = {
-            'url': mistune.escape_link(link),
-            'name': text
-        }
+        context["link"] = {"url": safe_link(link), "name": Markup(text)}
         if title is not None:
-            context['link']['title'] = title
+            context["link"]["title"] = title
 
-        if 'link-model' not in context:
-            return self.jinja_env.get_template(
-                "unfold-link-normal.j2").render(context)
+        if "link-model" not in context:
+            return self.jinja_env.get_template("unfold-link-normal.j2").render(
+                context
+            )
 
         return self.jinja_env.get_template(
-            context['link-model'] + ".j2").render(context)
+            context["link-model"] + ".j2"
+        ).render(context)
 
 
-# ###############################################################################
-# # An object to wrap the mistune render
-# ###############################################################################
-# class RendererLink(ContextManagment, JinjaEnvManagment):
+# Register factories after class creation, when static methods are normal
+# callables.
+RendererGenerator.register("default", RendererDefault.generate)
+RendererGenerator.register("model:fi", RendererFi.generate)
+RendererGenerator.register("model-fi", RendererFi.generate)
+RendererGenerator.register("model:apt", RendererApt.generate)
+RendererGenerator.register("model-apt", RendererApt.generate)
+RendererGenerator.register("model:unfold", RendererUnfold.generate)
+RendererGenerator.register("model-unfold", RendererUnfold.generate)
 
-#     ###########################################################################
-#     # init the link renderer
-#     ###########################################################################
-#     def __init__(self, jinja_env, context, default_link="normal"):
-#         JinjaEnvManagment.__init__(self, jinja_env)
-#         ContextManagment.__init__(self, context)
-#         self.__default_link = default_link
 
-#     ###########################################################################
-#     # Rendering a given link with content and title.
-#     #
-#     # @param link: href link for ``<a>`` tag.
-#     # @param title: title content for `title` attribute.
-#     # @param text: text content for description.
-#     ###########################################################################
-#     def link(self, link, title, text):
-#         self.instructions = read_instructions(text)
-#         text = strip_xml_comment(text)
-#         context = self.context
-#         context['link'] = {'url': mistune.escape_link(link), 'name': text}
+# -----------------------------------------------------------------------------
+def safe_link(url: str) -> Markup:
+    """Return a Markup URL using Mistune's scheme policy and one HTML escaping
+    pass.
 
-#         if title is not None:
-#             context['link']['title'] = title
+    Decode existing HTML entities first so query-string ampersands are not
+    escaped twice. Markup prevents Jinja from applying a second escaping pass.
+    """
+    return Markup(mistune.HTMLRenderer().safe_url(unescape(url)))
 
-#         if 'normal-link' in context:
-#             return self.jinja_env.get_template(
-#                 "link_normal.j2").render(context)
 
-#         link_model = self.__default_link
+class RendererDispatch(mistune.ClosingHTMLRenderer):
+    """Adapt component renderers to Mistune 3 and close nested heading sections.
 
-#         if 'link-model' in context:
-#             link_model = context['link-model']
+    The active renderer is inherited from the nearest enclosing heading level.
+    Each render resets parser-specific state, allowing sequential reuse.
+    Instances carry mutable state and should not be shared across concurrent
+    renders.
+    """
 
-#         return self.jinja_env.get_template(
-#             "link_" + link_model + ".j2").render(context)
+    # --------------------------------------------------------------------------
+    def __init__(self, *, jinja_env, context):
+        """Create a dispatcher with a Jinja environment and the email variable
+        context.
 
-###############################################################################
-# An object to wrap the mistune render
-###############################################################################
-class RendererDispatch(mistune.Renderer):
+        Authored raw HTML is preserved. Renderer selection may raise ValueError
+        when the initial context names multiple registered renderers.
+        """
+        super().__init__(escape=False)
+        self._inline = mistune.create_markdown(
+            renderer=None, plugins=["url"]
+        ).inline
+        self._kwargs = {"jinja_env": jinja_env, "context": context}
+        self._reset()
 
-    def __init__(self, **kwargs):
-        mistune.Renderer.__init__(self, **kwargs)
-        self.__current_level = 0
-        self.__renderers = {}
-        self.__renderers[0] = RendererGenerator.create('default', **kwargs)
-        self.__end_stack = {}
-        self.__kwargs = kwargs
-        self.__change_renderer(kwargs['context'])
+    # --------------------------------------------------------------------------
+    def _reset(self):
+        """Reset heading state and select the initial renderer from the email
+        context.
+        """
+        self._level = 0
+        self._renderers = {
+            0: RendererGenerator.create("default", **self._kwargs)
+        }
+        self._ends = {}
+        self._change_renderer(self._kwargs["context"])
 
-    ###########################################################################
-    # Get renderer
-    ###########################################################################
-    def get_renderer(self, level=None):
-        local_level = level
-        if level is None:
-            local_level = self.level
+    # --------------------------------------------------------------------------
+    def __call__(self, tokens, state):
+        """Render Mistune tokens for a block state after resetting section
+        state.
+        """
+        self._reset()
+        self._state = state
+        return super().__call__(tokens, state)
 
-        while (local_level not in self.__renderers) and (local_level > 0):
-            local_level = local_level - 1
-        return self.__renderers[local_level]
-
-    ###########################################################################
-    # Get a function from the renderer
-    ###########################################################################
-    def get_renderer_method(self, method, level=None):
-        if level is None:
-            level = self.level
-        renderer = self.get_renderer(level)
-        if hasattr(renderer, method) and callable(getattr(renderer, method)):
-            return getattr(renderer, method)
-        return None
-
-    ###########################################################################
-    # Get the level of header
-    # @return the current level
-    ###########################################################################
+    # --------------------------------------------------------------------------
     @property
     def level(self):
-        return self.__current_level
+        """Return the heading level, or zero before the first heading."""
+        return self._level
 
-    ###########################################################################
-    # set the new level
-    # @param value The value to set
-    ###########################################################################
+    # --------------------------------------------------------------------------
+    def get_renderer(self, level: int | None = None) -> RendererDefault:
+        """Return the renderer at level, falling back to the nearest enclosing
+        level.
+
+        An omitted level uses the current heading level. Level zero always has a
+        default renderer, possibly replaced by an initial model selection.
+        """
+        level = self.level if level is None else level
+        while level not in self._renderers and level > 0:
+            level -= 1
+        return self._renderers[level]
+
+    # --------------------------------------------------------------------------
+    def get_renderer_method(self, method, level=None):
+        """Return a named component attribute at level, or None when it is
+        absent.
+        """
+        return getattr(self.get_renderer(level), method, None)
+
+    # --------------------------------------------------------------------------
     def add_to_stack(self, level, content):
-        if level in self.__end_stack:
-            raise 'should empty the task'
+        """Store closing HTML for a level; reject an already open section at
+        that level.
+        """
+        if level in self._ends:
+            raise RuntimeError(
+                "A section must be closed before opening another"
+            )
+        self._ends[level] = content
 
-        self.__end_stack[level] = content
-
-    ###########################################################################
-    # set the new level
-    # @param value The value to set
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def change_level(self, new_level):
-        result = ''
+        """Close sections down to new_level and return their accumulated closing
+        HTML.
 
-        if new_level < 0:
-            new_level = 0
-
-        for level in list(reversed(range(new_level,
-                                         self.__current_level + 1))):
-            if level in self.__end_stack:
-                result += self.__end_stack[level]
-                del self.__end_stack[level]
-            if level in self.__renderers:
-                del self.__renderers[level]
-
-        self.__current_level = new_level
-
+        The section at new_level is also closed before a replacement is opened.
+        Negative levels are clamped to zero; renderer selections above level
+        zero are discarded as their sections close.
+        """
+        new_level = max(new_level, 0)
+        result = ""
+        for level in range(self.level, new_level - 1, -1):
+            result += self._ends.pop(level, "")
+            if level > 0:
+                self._renderers.pop(level, None)
+        self._level = new_level
         return result
 
-    ###########################################################################
-    # Change the renderer if needed
-    # @param text the text containing instrction
-    ###########################################################################
-    def __change_renderer(self, instructions):
-        # Find the new renderer if needed
-        new_renderer = None
-        for key in instructions:
-            if isinstance(instructions[key], str):
-                candidats = [(key, instructions[key]),
-                            (key + ":" + instructions[key], None)]
-                for candidat in candidats:
-                    if RendererGenerator.is_renderer(candidat[0]):
-                        if new_renderer is None:
-                            new_renderer = candidat
-                        else:
-                            raise Exception("Find two renderers")
+    # --------------------------------------------------------------------------
+    def _change_renderer(self, instructions):
+        """Select a renderer from instruction keys or key:value combinations.
 
-        if new_renderer is not None:
-            self.__renderers[self.level] = \
-                RendererGenerator.create(new_renderer[0],
-                                         init_param=new_renderer[1],
-                                         **self.__kwargs)
+        Recognized names are matched case-insensitively. Ignore unrecognized
+        choices; raise ValueError if more than one registered selection appears
+        in the mapping.
+        """
+        candidates = []
+        for key, value in instructions.items():
+            if isinstance(value, str):
+                for name in (key, f"{key}:{value}"):
+                    if RendererGenerator.is_renderer(name):
+                        candidates.append(name)
+        if len(candidates) > 1:
+            raise ValueError("Multiple renderers selected for the same section")
+        if candidates:
+            self._renderers[self.level] = RendererGenerator.create(
+                candidates[0], **self._kwargs
+            )
 
-    ###########################################################################
-    # Change the renderer if needed
-    # @param text the text containing instrction
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def change_renderer_on_instrcution(self, text):
-        # Find the new renderer if needed
-        instructions = read_instructions(text)
-        self.__change_renderer(instructions)
+        """Select a renderer from HTML comment instructions in text.
 
-    ###########################################################################
-    # set the new level
-    # @param value The value to set
-    ###########################################################################
+        The historical method spelling is retained for compatibility.
+        """
+        self._change_renderer(read_instructions(text))
+
+    # --------------------------------------------------------------------------
     def close(self):
+        """Return closing HTML for all remaining heading sections and reset
+        the level.
+        """
         return self.change_level(0)
 
-    ###########################################################################
-    # Rendering header/heading tags like ``<h1>`` ``<h2>``.
-    #
-    # @param text: rendered text content for the header.
-    # @param level: a number for the header level, for example: 1.
-    # @param raw: raw text content of the header.
-    ###########################################################################
-    def header(self, text, level, raw=None):
-        # change the level and get the end of the previous
+    # --------------------------------------------------------------------------
+    def heading(self, text, level, **attrs):
+        """Close prior sections, select a local renderer, and open a heading
+        section.
+        """
         unstack = self.change_level(level)
-
-        # change the renderer if needed
         self.change_renderer_on_instrcution(text)
-
-        # finally do the job with the renderer
-        method = self.get_renderer_method('header')
-        if method is None:
-            return mistune.Renderer.header(self, text, level, raw=raw)
-
-        (begin, end) = method(text, level, raw=raw)
-
+        begin, end = self.get_renderer().header(text, level)
         self.add_to_stack(level, end)
-
         return unstack + begin
 
-    ###########################################################################
-    # Returns the default, empty output value for the renderer.
-    #
-    # All renderer methods use the '+=' operator to append to this value.
-    # Default is a string so rendering HTML can build up a result string with
-    # the rendered Markdown.
-    #
-    # Can be overridden by Renderer subclasses to be types like an empty
-    # list, allowing the renderer to create a tree-like structure to
-    # represent the document (which can then be reprocessed later into a
-    # separate format like docx or pdf).
-    ###########################################################################
-    def placeholder(self):
-        return mistune.Renderer.placeholder(self)
-
-    ###########################################################################
-    # Rendering block level code. ``pre > code``.
-    #
-    # @param code: text content of the code block.
-    # @param lang: language of the given code.
-    ###########################################################################
-    def block_code(self, code, lang=None):
-        return mistune.Renderer.block_code(self, code, lang)
-
-    ###########################################################################
-    # Rendering <blockquote> with the given text.
-    #
-    # @param text: text content of the blockquote.
-    ###########################################################################
-    def block_quote(self, text):
-        return mistune.Renderer.block_quote(self, text)
-
-    ###########################################################################
-    # Rendering block level pure html content.
-    #
-    # @param html: text content of the html snippet.
-    ###########################################################################
-    def block_html(self, html):
-        return mistune.Renderer.block_html(self, html)
-
-    ###########################################################################
-    # Rendering method for ``<hr>`` tag.
-    ###########################################################################
-    def hrule(self):
-        return mistune.Renderer.hrule(self)
-
-    ###########################################################################
-    # Rendering list tags like ``<ul>`` and ``<ol>``.
-    #
-    # @param body: body contents of the list.
-    # @param ordered: whether this list is ordered or not.
-    ###########################################################################
-    def list(self, body, ordered=True):
-        return mistune.Renderer.list(self, body, ordered=ordered)
-
-    ###########################################################################
-    # Rendering list item snippet. Like ``<li>``.
-    ###########################################################################
-    def list_item(self, text):
-        return mistune.Renderer.list_item(self, text)
-
-    ###########################################################################
-    # Rendering paragraph tags. Like ``<p>``.
-    ###########################################################################
+    # --------------------------------------------------------------------------
     def paragraph(self, text):
-        method = self.get_renderer_method('paragraph')
-        if method is None:
-            return mistune.Renderer.paragraph(self, text)
-        return method(text)
+        """Delegate paragraph HTML to the current component renderer."""
+        return self.get_renderer().paragraph(text)
 
-    ###########################################################################
-    # Rendering table element. Wrap header and body in it.
-    #
-    # @param header: header part of the table.
-    # @param body: body part of the table.
-    ###########################################################################
-    def table(self, header, body):
-        method = self.get_renderer_method('table')
-        if method is None:
-            return mistune.Renderer.table(self, header, body)
-        return method(header, body)
+    # --------------------------------------------------------------------------
+    def link(self, text, url, title=None):
+        """Adapt Mistune's text/url/title order to the component renderer's
+        link signature.
+        """
+        return self.get_renderer().link(url, title, text)
 
-    ###########################################################################
-    # Rendering a table row. Like ``<tr>``.
-    #
-    # @param content: content of current table row.
-    ###########################################################################
-    def table_row(self, content):
-        return mistune.Renderer.table_row(self, content)
+    # --------------------------------------------------------------------------
+    def image(self, text, url, title=None):
+        """Adapt Mistune's text/url/title order to the component renderer's
+        image signature.
+        """
+        return self.get_renderer().image(url, title, text)
 
-    ###########################################################################
-    # Rendering a table cell. Like ``<th>`` ``<td>``.
-    #
-    # @param content: content of current table cell.
-    # @param header: whether this is header or not.
-    # @param align: align of current table cell.
-    ###########################################################################
-    def table_cell(self, content, **flags):
-        return mistune.Renderer.table_cell(self, content, **flags)
+    # --------------------------------------------------------------------------
+    def table(self, text):
+        """Split Mistune table HTML into header/body fragments for the active
+        renderer.
 
-    ###########################################################################
-    # Rendering **strong** text.
-    #
-    # @param text: text content for emphasis.
-    ###########################################################################
-    def double_emphasis(self, text):
-        return mistune.Renderer.double_emphasis(self, text)
+        Fall back to a basic table wrapper when the expected thead/tbody
+        structure is absent.
+        """
+        parts = re.fullmatch(
+            r"\s*<thead>(.*?)</thead>\s*<tbody>(.*?)</tbody>\s*",
+            text,
+            re.DOTALL,
+        )
+        if parts:
+            return self.get_renderer().table(*parts.groups())
+        return f'<table class="table">\n{text}</table>\n'
 
-    ###########################################################################
-    # Rendering *emphasis* text.
-    #
-    # @param text: text content for emphasis.
-    ###########################################################################
-    def emphasis(self, text):
-        return mistune.Renderer.emphasis(self, text)
+    # --------------------------------------------------------------------------
+    def block_html(self, html):
+        """Preserve raw HTML, parsing inline Markdown inside standalone p
+        elements.
 
-    ###########################################################################
-    # Rendering inline `code` text.
-    #
-    # @param text: text content for inline code.
-    ###########################################################################
-    def codespan(self, text):
-        return mistune.Renderer.codespan(self, text)
+        This keeps authored Outlook tables, conditional comments, and VML intact
+        while allowing Markdown and bare-URL links in legacy HTML paragraphs.
+        """
+        paragraph = re.fullmatch(
+            r"(<p\b[^>]*>)(.*?)(</p>\s*)", html, flags=re.IGNORECASE | re.DOTALL
+        )
+        if paragraph:
+            start, text, end = paragraph.groups()
+            tokens = self._inline(text, self._state.env)
+            return start + self.render_tokens(tokens, self._state) + end
+        return super().block_html(html)
 
-    ###########################################################################
-    # Rendering line break like ``<br>``.
-    ###########################################################################
-    def linebreak(self):
-        return mistune.Renderer.linebreak(self)
 
-    ###########################################################################
-    # Rendering ~~strikethrough~~ text.
-    #
-    # @param text: text content for strikethrough.
-    ###########################################################################
-    def strikethrough(self, text):
-        return mistune.Renderer.strikethrough(self, text)
+# -----------------------------------------------------------------------------
+def create_markdown(jinja_env, context):
+    """Build the application's Markdown-to-HTML parser with section-closing
+    support.
 
-    ###########################################################################
-    # Rendering unformatted text.
-    #
-    # @param text: text content.
-    ###########################################################################
-    def text(self, text):
-        return mistune.Renderer.text(self, text)
+    Args:
+        jinja_env: Jinja Environment containing component templates and paths
+            globals.
+        context: Email variables, including an optional model selector.
 
-    ###########################################################################
-    # Rendering escape sequence.
-    #
-    # @param text: text content.
-    ###########################################################################
-    def escape(self, text):
-        return mistune.Renderer.escape(self, text)
+    Returns:
+        A callable Mistune parser configured with table, strikethrough,
+        footnotes, and url plugins. Calling it returns HTML and closes all
+        heading sections.
 
-    ###########################################################################
-    # Rendering a given link or email address.
-    #
-    # @param link: link content or email address.
-    # @param is_email: whether this is an email or not.
-    ###########################################################################
-    def autolink(self, link, is_email=False):
-        method = self.get_renderer_method('autolink')
-        if method is None:
-            return mistune.Renderer.autolink(
-                self, link, is_email=is_email)
-        return method(link, is_email=is_email)
-
-    ###########################################################################
-    # Rendering a given link with content and title.
-    #
-    # @param link: href link for ``<a>`` tag.
-    # @param title: title content for `title` attribute.
-    # @param text: text content for description.
-    ###########################################################################
-    def link(self, link, title, text):
-        method = self.get_renderer_method('link')
-        if method is None:
-            return mistune.Renderer.link(self, link, title, text)
-        return method(link, title, text)
-
-    ###########################################################################
-    # Rendering a image with title and text.
-    #
-    # @param src: source link of the image.
-    # @param title: title text of the image.
-    # @param text: alt text of the image.
-    ###########################################################################
-    def image(self, src, title, text):
-        method = self.get_renderer_method('image')
-        if method is None:
-            return mistune.Renderer.image(self, src, title, text)
-        return method(src, title, text)
-
-    ###########################################################################
-    # Rendering span level pure html content.
-    #
-    # @param html: text content of the html snippet.
-    ###########################################################################
-    def inline_html(self, html):
-        return mistune.Renderer.inline_html(self, html)
-
-    ###########################################################################
-    # Rendering newline element.
-    ###########################################################################
-    def newline(self):
-        return mistune.Renderer.newline(self)
-
-    ###########################################################################
-    # Rendering the ref anchor of a footnote.
-    #
-    # @param key: identity key for the footnote.
-    # @param index: the index count of current footnote.
-    ###########################################################################
-    def footnote_ref(self, key, index):
-        return mistune.Renderer.footnote_ref(self, key, index)
-
-    ###########################################################################
-    # Rendering a footnote item.
-    #
-    # @param key: identity key for the footnote.
-    # @param text: text content of the footnote.
-    ###########################################################################
-    def footnote_item(self, key, text):
-        return mistune.Renderer.footnote_item(self, key, text)
-
-    ###########################################################################
-    # Wrapper for all footnotes.
-    #
-    # @param text: contents of all footnotes.
-    ###########################################################################
-    def footnotes(self, text):
-        return mistune.Renderer.footnotes(self, text)
+    The parser can be reused sequentially. Raw HTML is preserved, so only
+    trusted author content should be passed to it.
+    """
+    return mistune.create_markdown_with_close(
+        renderer=RendererDispatch(jinja_env=jinja_env, context=context),
+        plugins=["table", "strikethrough", "footnotes", "url"],
+    )

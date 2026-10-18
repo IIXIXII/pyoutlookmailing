@@ -141,3 +141,6 @@ venv.bak/
 
 # Others
 .config/
+.ruff_cache/
+*.local.conf
+audit-artifacts/

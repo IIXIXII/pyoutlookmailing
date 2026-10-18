@@ -30,10 +30,13 @@ IF NOT EXIST "%MAIL%" (
   EXIT /B 1
 )
 
-REM conf file absolute path
+REM Prefer the existing .conf; otherwise read config variables from the .md.
 FOR %%I IN ("%MYPATH%%ARGUMENT%.conf") DO SET "CONF=%%~fI"
 IF NOT EXIST "%CONF%" (
-  ECHO ERROR: conf file not found: "%CONF%"
+  FOR %%I IN ("%MYPATH%%ARGUMENT%.md") DO SET "CONF=%%~fI"
+)
+IF NOT EXIST "%CONF%" (
+  ECHO ERROR: configuration source not found: "%CONF%"
   EXIT /B 1
 )
 

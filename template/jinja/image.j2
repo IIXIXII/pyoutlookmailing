@@ -8,7 +8,7 @@
 +--------------------------------------------------------------------------- #}
 <img 
 {% if inline is defined -%}
-    src="data:image/png;base64,{{base64}}"
+    src="data:{{ mime | default('image/png') }};base64,{{base64}}"
 	{% else -%}
 	{% if cid is defined -%}
 		src="cid:{{src}}"

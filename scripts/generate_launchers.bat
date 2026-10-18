@@ -10,13 +10,13 @@ REM    - The launcher model is located in:     <repo>\scripts\mail_launcher_mode
 REM    - Mail definitions are located in:      <repo>\mails\
 REM
 REM  Rules:
-REM    - For each *.conf file found in <repo>\mails\
-REM    - If a corresponding *.md file exists
+REM    - For each *.md file found in <repo>\mails\
+REM    - If a corresponding *.conf or an embedded var(conf/...) exists
 REM    - And if a corresponding *.bat launcher does NOT already exist
 REM      => Create the launcher from mail_launcher_model.bat
 REM
 REM  Existing launchers are preserved.
-REM  Missing markdown files cause the mail to be skipped.
+REM  Markdown files without configuration are skipped. Use --once to avoid prompts.
 REM =============================================================================
 
 REM ---------------------------------------------------------------------------
@@ -66,15 +66,15 @@ REM ---------------------------------------------------------------------------
 SET /A FOUND=0
 SET /A CREATED=0
 SET /A SKIPPED=0
-SET /A NOMD=0
+SET /A NOCONF=0
 
-CALL "%FUN%" :PRINT_LINE "    Scanning *.conf files..."
+CALL "%FUN%" :PRINT_LINE "    Scanning *.md files..."
 CALL "%FUN%" :LINE_BREAK
 
 REM ---------------------------------------------------------------------------
 REM Scan mails directory
 REM ---------------------------------------------------------------------------
-FOR %%F IN ("%MAILS_DIR%\*.conf") DO (
+FOR %%F IN ("%MAILS_DIR%\*.md") DO IF EXIST "%%~fF" (
   SET /A FOUND+=1
 
   SET "BASE=%%~nF"
@@ -82,11 +82,18 @@ FOR %%F IN ("%MAILS_DIR%\*.conf") DO (
   SET "MD=%MAILS_DIR%\!BASE!.md"
   SET "BAT=%MAILS_DIR%\!BASE!.bat"
 
-  CALL "%FUN%" :PRINT_LINE "    [CONF] !BASE!"
+  CALL "%FUN%" :PRINT_LINE "    [MAIL] !BASE!"
 
-  IF NOT EXIST "!MD!" (
-    SET /A NOMD+=1
-    CALL "%FUN%" :PRINT_LINE "      [SKIP] missing markdown file"
+  SET "HAS_CONFIG="
+  IF EXIST "!CONF!" SET "HAS_CONFIG=1"
+  IF NOT DEFINED HAS_CONFIG (
+    FINDSTR /L /C:"var(conf/" /C:"var(conf)" "!MD!" >NUL
+    IF NOT ERRORLEVEL 1 SET "HAS_CONFIG=1"
+  )
+
+  IF NOT DEFINED HAS_CONFIG (
+    SET /A NOCONF+=1
+    CALL "%FUN%" :PRINT_LINE "      [SKIP] missing configuration"
     CALL "%FUN%" :LINE_BREAK
   ) ELSE (
     CALL "%FUN%" :PRINT_LINE "      [OK]   markdown found"
@@ -115,15 +122,16 @@ REM Summary
 REM ---------------------------------------------------------------------------
 CALL "%FUN%" :LINE_BREAK
 CALL "%FUN%" :PRINT_LINE "    SUMMARY"
-CALL "%FUN%" :PRINT_LINE "    conf files found      = %FOUND%"
+CALL "%FUN%" :PRINT_LINE "    markdown files found  = %FOUND%"
 CALL "%FUN%" :PRINT_LINE "    launchers created    = %CREATED%"
 CALL "%FUN%" :PRINT_LINE "    launchers kept       = %SKIPPED%"
-CALL "%FUN%" :PRINT_LINE "    skipped (no .md)     = %NOMD%"
+CALL "%FUN%" :PRINT_LINE "    skipped (no config)  = %NOCONF%"
 CALL "%FUN%" :LINE_BREAK
 
 REM ---------------------------------------------------------------------------
 REM Interactive loop
 REM ---------------------------------------------------------------------------
+IF /I "%~1"=="--once" GOTO :EOF
 CHOICE /C YN /M "Do it again ? (Y/N)"
 IF ERRORLEVEL 2 GOTO :EOF
 GOTO :STARTAGAIN

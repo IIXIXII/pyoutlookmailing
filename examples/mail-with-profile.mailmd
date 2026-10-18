@@ -1,0 +1,11 @@
+<!-- var(conf/profile) = "ebw" -->
+<!-- var(conf/really_send) = false -->
+<!-- var(conf/to/list) = "[Recipient](mailto:recipient@example.org)" -->
+<!-- var(subject) = "Invitation | European Business Wallet" -->
+<!-- var(summary) = "EBW working session" -->
+
+Hello,
+
+You are invited to our **European Business Wallet working session**.
+
+Kind regards.

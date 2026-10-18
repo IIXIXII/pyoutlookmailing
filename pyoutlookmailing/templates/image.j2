@@ -1,0 +1,1 @@
+<img src="{% if inline is defined %}data:{{ mime }};base64,{{ base64 }}{% elif cid is defined %}cid:{{ src }}{% else %}{{ src }}{% endif %}" alt="{{ alt }}"{% if title is defined %} title="{{ title }}"{% endif %}>

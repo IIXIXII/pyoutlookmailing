@@ -178,6 +178,21 @@ IF "%SETUP_ACTION%"=="" (
 )
 
 CALL :PRINT_LINE "   Launch python setup %SETUP_ACTION%"
+IF /I "%SETUP_ACTION%"=="build" (
+  "%PYTHON%" -m build
+  IF ERRORLEVEL 1 (ENDLOCAL & EXIT /B 1)
+  ENDLOCAL & EXIT /B 0
+)
+IF /I "%SETUP_ACTION%"=="version_increase" (
+  "%PYTHON%" scripts\release.py bump
+  IF ERRORLEVEL 1 (ENDLOCAL & EXIT /B 1)
+  ENDLOCAL & EXIT /B 0
+)
+IF /I "%SETUP_ACTION%"=="version_tag" (
+  "%PYTHON%" scripts\release.py tag
+  IF ERRORLEVEL 1 (ENDLOCAL & EXIT /B 1)
+  ENDLOCAL & EXIT /B 0
+)
 "%PYTHON%" setup.py %SETUP_ACTION%
 IF ERRORLEVEL 1 (
   ECHO ERROR: setup.py failed.
@@ -207,7 +222,8 @@ IF NOT EXIST "%PY_FILE%" (
 )
 
 REM After SHIFT, args start at %1
-CALL :PRINT_LINE "   %PYTHON% %PY_FILE% %1 %2 %3 %4"
+REM Do not nest quoted file paths in a PRINT_LINE argument: it truncates the log.
+ECHO    "%PYTHON%" "%PY_FILE%" %1 %2 %3 %4
 "%PYTHON%" "%PY_FILE%" %1 %2 %3 %4
 SET "RC=%ERRORLEVEL%"
 

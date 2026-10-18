@@ -1,509 +1,643 @@
-﻿#!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # =============================================================================
-#                    Author: Florent TOURNOIS | License: MIT                   
+# Author: Florent TOURNOIS | License: MIT
 # =============================================================================
 
+"""Prepare configuration and HTML independently of Outlook delivery."""
+
+from __future__ import annotations
 
 import logging
-import sys
 import os
-import os.path
-import yaml
-import pandas as pd
-import codecs
-import collections
-from copy import deepcopy
-import win32com.client as win32
-from jinja2 import Template
 import re
+from collections.abc import Mapping
+from copy import deepcopy
+from pathlib import Path
+from typing import Any
 
-import pymdtools.common as common
-import pymdtools.instruction as mdinst
-from pymdtools import mistunege as mistune
+import yaml
+from markupsafe import Markup
+from pymdtools import common
+from pymdtools.instruction import get_vars_from_md_text
 
-from . import genenv
-from . import renderer
+from . import genenv, renderer
+from .embedded import split_configuration
+from .files import find_file
+from .preferences import read_preferences
+
+Configuration = dict[str, Any]
+MARKDOWN_EXTENSIONS = {".md", ".markdown", ".mailmd"}
+logger = logging.getLogger(__name__)
+
 
 # -----------------------------------------------------------------------------
-# The filename of the default configuration
-# -----------------------------------------------------------------------------
-__DEFAULT_CONF_FILENAME__ = "default.conf"
+def _merge(
+    base: Mapping, override: Mapping, *, concatenate_lists: bool = True
+) -> Configuration:
+    """Return a deep merge of two mappings without changing either input.
 
-# -----------------------------------------------------------------------------
-# The filename of the default configuration
-# -----------------------------------------------------------------------------
-__EXT_FILENAME__ = ".conf"
-
-# -----------------------------------------------------------------------------
-__cid_re__ = \
-    r"src=['\"]cid:(?P<name>[\.a-zA-Z0-9_-]+)['\"]"
-
-###############################################################################
-# Recursive dict merge. Inspired by :meth:``dict.update()``, instead of
-# updating only top-level keys, dict_merge recurses down into dicts nested
-# to an arbitrary depth, updating keys. The ``merge_dct`` is merged into
-# ``dct``.
-#
-# This version will return a copy of the dictionary and leave the original
-#     arguments untouched.
-#
-# The optional argument ``add_keys``, determines whether keys which are
-#     present in ``merge_dict`` but not ``dct`` should be included in the
-#     new dict.
-#
-#
-# Code from https://gist.github.com/angstwad/bf22d1822c38a92ec0a9
-#
-# Args:
-#         dct (dict) onto which the merge is executed
-#         merge_dct (dict): dct merged into dct
-#         add_keys (bool): whether to add new keys
-#
-# Returns:
-#         dict: updated dict
-###############################################################################
-def __dict_merge(dct, merge_dct, add_keys=True):
-    dct = deepcopy(dct)
-
-    if not add_keys:
-        merge_dct = {
-            k: merge_dct[k]
-            for k in set(dct).intersection(set(merge_dct))
-        }
-
-    for k, value in merge_dct.items():
-        if isinstance(dct.get(k), dict) \
-           and isinstance(value, collections.Mapping):
-            dct[k] = __dict_merge(dct[k], value, add_keys=add_keys)
-        elif isinstance(dct.get(k), list) \
-                and isinstance(value, list):
-            dct[k].extend(value)
+    Nested mappings are merged recursively. Lists are concatenated in base-then-
+    override order; other values from override replace the corresponding base
+    value. Set concatenate_lists=False when applying user defaults or profiles;
+    in that case an override list replaces the inherited list.
+    """
+    result = deepcopy(dict(base))
+    for key, value in override.items():
+        if isinstance(result.get(key), dict) and isinstance(value, Mapping):
+            result[key] = _merge(
+                result[key], value, concatenate_lists=concatenate_lists
+            )
+        elif (
+            concatenate_lists
+            and isinstance(result.get(key), list)
+            and isinstance(value, list)
+        ):
+            result[key].extend(deepcopy(value))
         else:
-            dct[k] = value
-    return dct
-
-
-###############################################################################
-# Compute an absolute path from the config parameter
-#
-# @param paths list of paths to compute
-# @return the absolute path
-###############################################################################
-def path(*paths):
-    result = ""
-    for path_element in paths:
-        if len(result) > 0:
-            result = os.path.join(path_element, result)
-        else:
-            result = path_element
-        if os.path.isabs(result):
-            return os.path.normpath(common.set_correct_path(result))
-
-    return os.path.normpath(common.set_correct_path(result))
-
-
-###############################################################################
-# Expand paths in the config file
-#
-# @param data the config part
-# @param root the root of the config part
-# @return the dict of the config
-###############################################################################
-def expand_paths(data, root):
-    if 'root' not in data:
-        data['root'] = './'
-
-    # Set the root path absolute
-    data['root'] = path(data['root'], root)
-
-    for key in data:
-        if isinstance(data[key], dict):
-            data[key] = expand_paths(data[key], data['root'])
-        elif isinstance(data[key], list):
-            new_list = []
-            for element in data[key]:
-                new_list.append(path(element, data['root'], root))
-            data[key] = new_list
-        else:
-            data[key] = path(data[key], data['root'], root)
-
-    return data
-
-
-###############################################################################
-# Read conf yaml
-#
-# @param filename the config filename
-# @return the dict of the config
-###############################################################################
-def __read_yaml(filename):
-    logging.debug('Read the yaml config file %s', (filename))
-    filename = common.check_is_file_and_correct_path(filename)
-    filename_path = os.path.dirname(filename)
-    with codecs.open(filename, "r", "utf-8") as ymlfile:
-        result = yaml.load(ymlfile, Loader=yaml.FullLoader)
-
-    logging.debug('Read finished for the yaml config file %s', (filename))
-
-    if 'paths' not in result:
-        return result
-
-    includes_full = []
-    if 'paths' in result and 'includes' in result['paths']:
-        for inc_fn in result['paths']['includes']:
-            inc_fn_full = os.path.join(filename_path, inc_fn)
-            includes_full.append(inc_fn_full)
-            with codecs.open(inc_fn_full, "r", "utf-8") as ymlfile:
-                include_conf = yaml.load(ymlfile, Loader=yaml.FullLoader)
-            result = __dict_merge(include_conf, result, add_keys=True)
-
-    result['paths']['includes'] = includes_full
-
-    logging.debug('Add some info in the config result for all paths')
-
-    if 'base_search' not in result['paths']:
-        result['paths']['base_search']=[os.path.split(filename)[0], './']
-
-    result['paths'] = expand_paths(result['paths'],
-                                   os.path.split(filename)[0])
-
-    if 'conf_folder' not in result['paths']:
-        result['paths']['conf_folder'] = os.path.split(filename)[0]
-    if 'conf_filename' not in result['paths']:
-        result['paths']['conf_filename'] = filename
-    
-
+            result[key] = deepcopy(value)
     return result
 
 
-###############################################################################
-# Read conf yaml
-#
-# @param filename the config filename
-# @return the dict of the config
-###############################################################################
-def read_yaml(filename):
-    logging.debug('Read the yaml config file %s', (filename))
-    filename = common.check_is_file_and_correct_path(filename)
-    result = __read_yaml(filename)
+# -----------------------------------------------------------------------------
+def path(*paths: str | os.PathLike) -> str:
+    """Join path components in the legacy leaf-first order.
 
-    (folder, loc_filename) = os.path.split(filename)
-    (loc_filename, filename_ext) = os.path.splitext(loc_filename)
+    Args:
+        *paths: Leaf name followed by its parent directories. An absolute
+            component stops the search; any later components are ignored.
 
-    local_filename = os.path.join(
-        folder, loc_filename) + ".local" + filename_ext
-    logging.debug("local_filename = %s", local_filename)
+    Returns:
+        A normalized path string, which may still be relative and need not
+        exist.
 
-    if not os.path.isfile(local_filename):
-        return result
+    Example:
+        ``path("image.png", "img", "/project")`` produces
+        ``/project/img/image.png`` on POSIX systems.
+    """
+    result = Path()
+    for part in paths:
+        result = Path(part) / result
+        if result.is_absolute():
+            break
+    return os.path.normpath(result)
 
-    logging.debug('Read the yaml local config file %s', (local_filename))
-    local_conf = __read_yaml(local_filename)
-    result = __dict_merge(result, local_conf)
-
-    return result
 
 # -----------------------------------------------------------------------------
-def load_conf(filename, folder = "./"):
-    "Read a conf file and return the dict"
-    logging.debug('Load the configuration file: %s', filename)
-    run_folder = os.getcwd()
-    filename=common.search_for_file(filename,
-                                    [run_folder, folder],['./','conf'],2)
-    result = {}
+def expand_paths(data: Configuration, root: str | os.PathLike) -> Configuration:
+    """Return a copy of a paths mapping with absolute path values.
 
-    filename = os.path.abspath(filename)
-    if not os.path.isfile(filename):
-        logging.info('The configuration file does not exists.')
-        logging.info('The configuration filename is %s', filename)
-        return result
+    Args:
+        data: Paths mapping whose optional root is relative to the supplied
+            root. Nested mappings can define their own roots. Lists contain path
+            values.
+        root: Base directory for this mapping.
 
-    result = read_yaml(filename)
+    Returns:
+        A new mapping with an absolute root and expanded strings and lists.
 
+    Raises:
+        ValueError: A value is neither a path, a list, nor a nested mapping.
+
+    Paths are resolved without checking that the target files exist.
+    """
+    result = deepcopy(data)
+    base = Path(path(result.get("root", "."), root)).resolve()
+    result["root"] = str(base)
+    for key, value in result.items():
+        if isinstance(value, dict):
+            result[key] = expand_paths(value, base)
+        elif isinstance(value, list):
+            result[key] = [
+                str(Path(path(item, base)).resolve()) for item in value
+            ]
+        elif isinstance(value, (str, os.PathLike)):
+            result[key] = str(Path(path(value, base)).resolve())
+        else:
+            raise ValueError(
+                f"paths.{key} doit être un chemin ou une liste de chemins"
+            )
     return result
 
+
 # -----------------------------------------------------------------------------
-def compute_conf(conf, cmd_line_args=None):
-    conf = read_excel_list(conf)
-    if 'email' in conf:
-        if 'content' not in conf['email']:
-            conf['email']['content']={}
-        if 'filename'  not in conf['email']['content']:
-            md_filename = cmd_line_args.conf_filename
-            md_filename = common.filename_ext_to_md(md_filename)
-            conf['email']['content']['filename'] = md_filename
-            logging.info('Content filename: %s', md_filename)
+def expand_preferences_paths(
+    data: Configuration, root: str | os.PathLike
+) -> Configuration:
+    """Resolve common paths and each profile's paths without changing inputs.
 
-    conf = read_content_filename(conf)
+    Global paths use the preference file's directory and optional paths.root.
+    Profile paths inherit that global root unless they specify their own root,
+    relative to the preference file. Changing a profile root does not relocate
+    paths already defined by the global settings. This also preserves resource
+    locations when preferences are imported into a different user directory.
+    """
+    result = deepcopy(data)
+    if "paths" in result:
+        result["paths"] = expand_paths(result["paths"], root)
+    global_root = result.get("paths", {}).get("root", str(root))
+    for profile in result.get("profiles", {}).values():
+        if "paths" in profile:
+            profile["paths"] = expand_paths(
+                {"root": global_root, **profile["paths"]}, root
+            )
+    return result
 
-    if cmd_line_args is not None:
-        if cmd_line_args.send_mail != "conf":
-            conf['really_send']= (cmd_line_args.send_mail=="yes")
-            logging.info('The command line override the conf parameter '
-                         'Send_mail = %s', repr(conf['really_send']))
 
+# -----------------------------------------------------------------------------
+def _read_yaml(filename: Path, active: tuple[Path, ...] = ()) -> Configuration:
+    """Load one configuration file and recursively merge its includes.
+
+    The active path stack detects include cycles. Includes are relative to the
+    including file, whereas other paths use that file's optional paths.root.
+    Markdown extensions require embedded configuration. This helper does not
+    load local overrides; read_yaml applies the top-level override afterwards.
+    """
+    filename = filename.resolve()
+    if filename in active:
+        raise ValueError(f"Cycle dans les inclusions YAML : {filename}")
+    if filename.suffix.lower() in MARKDOWN_EXTENSIONS:
+        text = common.get_file_content(filename, encoding="utf-8-sig")
+        data, _ = split_configuration(text, required=True)
+    else:
+        with filename.open(encoding="utf-8-sig") as stream:
+            data = yaml.safe_load(stream)
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"La configuration doit être un objet YAML : {filename}"
+        )
+    paths = data.get("paths", {})
+    if not isinstance(paths, dict):
+        raise ValueError(f"paths doit être un objet YAML : {filename}")
+    includes = paths.get("includes", [])
+    if not isinstance(includes, list) or not all(
+        isinstance(p, str) for p in includes
+    ):
+        raise ValueError("paths.includes doit être une liste de fichiers")
+    result: Configuration = {}
+    for name in includes:
+        result = _merge(
+            result, _read_yaml(filename.parent / name, (*active, filename))
+        )
+    if paths:
+        own_paths = {k: v for k, v in paths.items() if k != "includes"}
+        data["paths"] = expand_paths(own_paths, filename.parent)
+    result = _merge(result, data)
+    result.setdefault("paths", {})["conf_folder"] = str(filename.parent)
+    result["paths"]["conf_filename"] = str(filename)
+    return result
+
+
+# -----------------------------------------------------------------------------
+def read_yaml(
+    filename: str | os.PathLike,
+    *,
+    preferences: str | os.PathLike | None = None,
+    use_preferences: bool = True,
+    profile: str | None = None,
+) -> Configuration:
+    """Load a configuration, its includes, and its adjacent local override.
+
+    Args:
+        filename: YAML file or a .md, .markdown, or .mailmd file with embedded
+            configuration. Text is read as UTF-8, accepting an optional BOM.
+        preferences: Optional user-preferences file overriding platform lookup
+            and PYOUTLOOKMAILING_PREFERENCES. Relative paths use the current
+            working directory.
+        use_preferences: Load common user defaults when true. False skips both
+            preferences and the campaign's profile selector.
+        profile: Explicit profile overriding the campaign's top-level profile.
+
+    Returns:
+        A new configuration mapping with resolved paths and source metadata.
+        Markdown sources use their own body when email.content is omitted.
+
+    Raises:
+        ValueError: Configuration is malformed, an include cycle exists, or a
+            required embedded configuration is missing.
+        OSError: A configuration file cannot be read.
+        yaml.YAMLError: YAML syntax is invalid.
+
+    User defaults and an optional profile have lower priority than includes,
+    the main file, and its local override. Campaign lists replace common lists;
+    lists within the campaign still append. For campaign.conf and campaign.md,
+    the override is
+    campaign.local.conf. The email body and Excel recipient lists are read later
+    by compute_conf.
+    """
+    filename = Path(filename).resolve()
+    result = _read_yaml(filename)
+    # A Markdown source shares the existing .local.conf override convention.
+    local = filename.with_suffix(
+        ".local.conf"
+        if filename.suffix.lower() in MARKDOWN_EXTENSIONS
+        else ".local" + filename.suffix
+    )
+    if local.is_file():
+        result = _merge(result, _read_yaml(local))
+    if not use_preferences and (preferences is not None or profile is not None):
+        raise ValueError(
+            "Les préférences désactivées ne peuvent pas sélectionner "
+            "un fichier ou un profil"
+        )
+    if use_preferences:
+        store, common = read_preferences(preferences)
+        common = expand_preferences_paths(common, store.path.parent)
+        profiles = common.pop("profiles", {})
+        selected = profile if profile is not None else result.get("profile")
+        if selected is not None:
+            if not isinstance(selected, str) or not selected.strip():
+                raise ValueError("profile doit être un nom de profil non vide")
+            if selected not in profiles:
+                raise ValueError(
+                    f"Profil upref inconnu : {selected!r} ({store.path})"
+                )
+            common = _merge(common, profiles[selected], concatenate_lists=False)
+        if common:
+            logger.info("Préférences communes : %s", store.path)
+            if selected is not None:
+                logger.info("Profil : %s", selected)
+            result = _merge(common, result, concatenate_lists=False)
+    paths = result.setdefault("paths", {})
+    paths["conf_folder"] = str(filename.parent)
+    paths["conf_filename"] = str(filename)
+    paths.setdefault("root", str(filename.parent))
+    paths.setdefault("base_search", [str(filename.parent), paths["root"]])
+    paths.setdefault("img", str(filename.parent))
+    if filename.suffix.lower() in MARKDOWN_EXTENSIONS:
+        email = result.setdefault("email", {})
+        if not isinstance(email, dict):
+            raise ValueError("La section email doit être un objet YAML")
+        if "content" not in email or email["content"] == {}:
+            email["content"] = {"filename": str(filename)}
+    return result
+
+
+# -----------------------------------------------------------------------------
+def load_conf(
+    filename: str | os.PathLike,
+    folder: str | os.PathLike = ".",
+    *,
+    preferences: str | os.PathLike | None = None,
+    use_preferences: bool = True,
+    profile: str | None = None,
+) -> Configuration:
+    """Find and read a YAML or embedded Markdown configuration.
+
+    Args:
+        filename: Absolute filename or a name relative to the search
+            directories.
+        folder: Additional search directory after the current working directory.
+        preferences: Optional common preferences file; see read_yaml.
+        use_preferences: Whether to load user defaults and campaign profiles.
+        profile: Optional explicit profile taking priority over the campaign.
+
+    Returns:
+        The configuration returned by read_yaml, ready for compute_conf.
+
+    Raises:
+        FileNotFoundError: No file exists in either root or its conf/mails
+            folders.
+
+    Parsing and include errors from read_yaml propagate to the caller.
+    """
+    return read_yaml(
+        find_file(filename, [Path.cwd(), folder], ("", "conf", "mails")),
+        preferences=preferences,
+        use_preferences=use_preferences,
+        profile=profile,
+    )
+
+
+# -----------------------------------------------------------------------------
+def default_conf() -> Configuration:
+    """Return a fresh copy of the packaged sample configuration.
+
+    The sample can be rendered immediately, uses draft mode, and has no
+    recipients. Add recipients before passing a prepared copy to send_email. It
+    is not automatically merged into configurations loaded with load_conf.
+    """
+    return read_yaml(
+        Path(__file__).with_name("default.conf"), use_preferences=False
+    )
+
+
+# -----------------------------------------------------------------------------
+def _addresses(values: Any, field: str) -> list[str]:
+    """Validate, lowercase, trim, and deduplicate a list of email addresses.
+
+    None becomes an empty list. First-occurrence order is preserved. The field
+    name is used in ValueError messages; this checks basic syntax, not
+    deliverability.
+    """
+    if values is None:
+        return []
+    if not isinstance(values, list) or not all(
+        isinstance(v, str) for v in values
+    ):
+        raise ValueError(f"{field}.list doit être une liste d’adresses")
+    result = []
+    for value in values:
+        address = value.strip().lower()
+        if not re.fullmatch(r"[^@\s;,<>]+@[^@\s;,<>]+", address):
+            raise ValueError(f"Adresse invalide dans {field}.list")
+        if address not in result:
+            result.append(address)
+    return result
+
+
+# -----------------------------------------------------------------------------
+def email_excel_list(xl_filename, xl_column, folders=None) -> list[str]:
+    """Read normalized email addresses from the first worksheet of an Excel
+    file.
+
+    Args:
+        xl_filename: Workbook filename, resolved with find_file.
+        xl_column: One column name or a nonempty list of column names.
+        folders: Search roots; a missing or empty value uses the working
+            directory.
+
+    Returns:
+        Unique lowercase addresses in column order, then row order. Blank cells
+        and non-string values are ignored.
+
+    Raises:
+        FileNotFoundError: The workbook is absent from the roots and excel/xl
+            folders.
+        ValueError: No columns are selected, a column is missing, or an address
+            is invalid.
+
+    Workbook parsing errors from pandas propagate. pandas is imported on demand.
+    """
+    # Keep pandas unloaded when no Excel recipient source is used.
+    # pylint: disable-next=import-outside-toplevel
+    import pandas as pd
+
+    filename = find_file(
+        xl_filename, folders or [Path.cwd()], ("", "excel", "xl")
+    )
+    table = pd.read_excel(filename)
+    columns = [xl_column] if isinstance(xl_column, str) else xl_column
+    if not isinstance(columns, list) or not columns:
+        raise ValueError("excel_column_name doit désigner au moins une colonne")
+    result = []
+    for column in columns:
+        if column not in table:
+            raise ValueError(f"Colonne Excel introuvable : {column}")
+        result.extend(
+            v for v in table[column] if isinstance(v, str) and v.strip()
+        )
+    return _addresses(result, "excel")
+
+
+# -----------------------------------------------------------------------------
+def read_excel_list(conf: Configuration) -> Configuration:
+    """Merge Excel addresses into configuration sections in place.
+
+    Each section with excel_file uses excel_column_name and its existing list.
+    Manual addresses come first; imported duplicates are removed. Consumed Excel
+    keys are deleted after a successful import. Without a column selector, a
+    nonempty manual list is used alone; otherwise ValueError is raised.
+
+    Returns:
+        The same configuration object. Earlier sections may already be updated
+        if a later section fails; compute_conf protects callers by copying
+        first.
+    """
+    for key, section in conf.items():
+        if isinstance(section, dict) and "excel_file" in section:
+            if "excel_column_name" not in section:
+                # Existing campaigns disable the Excel source by commenting
+                # its column selector while retaining explicit recipients.
+                manual = _addresses(section.get("list"), key)
+                if not manual:
+                    raise ValueError(
+                        f"{key}.excel_column_name est requis "
+                        "pour l’import Excel "
+                        f"lorsque {key}.list est vide"
+                    )
+                section["list"] = manual
+                continue
+            imported = email_excel_list(
+                section["excel_file"],
+                section["excel_column_name"],
+                conf["paths"]["base_search"],
+            )
+            section["list"] = _addresses(section.get("list"), key)
+            section["list"] = list(dict.fromkeys(section["list"] + imported))
+            del section["excel_file"], section["excel_column_name"]
+    return conf
+
+
+# -----------------------------------------------------------------------------
+def read_content_filename(conf: Configuration) -> Configuration:
+    """Load Markdown content and apply its ordinary variables in place.
+
+    For each top-level section with a content mapping, replace filename with
+    txt, strip leading embedded configuration, then merge ordinary var(...)
+    values into the section. Content files use paths.base_search and conf/files
+    subfolders. The selected configuration is never replaced by configuration
+    inside the body.
+
+    Returns:
+        The same configuration object.
+
+    Raises:
+        ValueError: A Markdown variable attempts to replace content, html_body,
+            or attachments. Embedded configuration parsing errors also
+            propagate.
+    """
+    for section in conf.values():
+        if not isinstance(section, dict) or not isinstance(
+            section.get("content"), dict
+        ):
+            continue
+        content = section["content"]
+        if "filename" in content:
+            filename = find_file(
+                content["filename"],
+                conf["paths"]["base_search"],
+                ("", "conf", "files"),
+            )
+            content["txt"] = common.get_file_content(
+                filename, encoding="utf-8-sig"
+            )
+            del content["filename"]
+        if "txt" in content:
+            # Configuration is selected by load_conf, never by the email body.
+            # Remove it even when a legacy .conf points to this Markdown file.
+            _, content["txt"] = split_configuration(content["txt"])
+            variables = get_vars_from_md_text(content["txt"])
+            if variables.keys() & {"content", "html_body", "attachments"}:
+                raise ValueError(
+                    "Une variable Markdown ne peut pas remplacer "
+                    "content, html_body ou attachments"
+                )
+            section.update(variables)
+    return conf
+
+
+# -----------------------------------------------------------------------------
+def md2html(md_content: str, env, context: Configuration) -> str:
+    """Render a Markdown fragment with the configured Jinja environment.
+
+    Args:
+        md_content: Authored Markdown, optionally starting with configuration
+            comments.
+        env: GenerationEnvironment providing templates and resource paths.
+        context: Email variables, including an optional model selector.
+
+    Returns:
+        HTML for the body fragment, before wrapping it in the email template.
+
+    Leading configuration is removed. Paths come from env.template_conf.
+    Authored raw HTML is preserved; this function is not a sanitizer for
+    untrusted content.
+    """
+    _, md_content = split_configuration(md_content)
+    context = {**context, "paths": env.template_conf["paths"]}
+    return renderer.create_markdown(env.jinja_env, context)(md_content)
+
+
+# -----------------------------------------------------------------------------
+def txt2html(conf: Configuration, env) -> Configuration:
+    """Replace content mappings containing txt with rendered HTML in place.
+
+    Each top-level section supplies its own renderer context. Return the same
+    configuration object; template and Markdown errors propagate from md2html.
+    """
+    for section in conf.values():
+        if isinstance(section, dict) and isinstance(
+            section.get("content"), dict
+        ):
+            if "txt" in section["content"]:
+                section["content"] = md2html(
+                    section["content"]["txt"], env, section
+                )
+    return conf
+
+
+# -----------------------------------------------------------------------------
+def htmlbody(conf: Configuration, env) -> Configuration:
+    """Render the outer email template into email.html_body in place.
+
+    The prepared email.content fragment is marked as trusted generated HTML.
+    Other email fields form the Jinja context. Return the same configuration.
+    """
+    email = conf["email"]
+    context = {**email, "content": Markup(email["content"])}
+    email["html_body"] = env.jinja_env.get_template(email["template"]).render(
+        context
+    )
+    return conf
+
+
+# -----------------------------------------------------------------------------
+def compute_conf(conf: Configuration, cmd_line_args=None) -> Configuration:
+    """Prepare a configuration copy for preview or Outlook delivery.
+
+    Args:
+        conf: Configuration containing an email section and optional recipient,
+            path, and delivery settings. The input is not modified.
+        cmd_line_args: Optional object with conf_filename and send_mail
+            attributes. send_mail accepts the CLI values yes, no, or conf;
+            yes/no override really_send, while conf preserves it.
+
+    Returns:
+        A deep copy with defaults, imported Excel lists, Markdown variables,
+        rendered email.content, and the complete email.html_body string.
+
+    Raises:
+        ValueError: Required email fields, content, or delivery flags are
+            invalid.
+        OSError: A source file cannot be read.
+
+    Reads configuration resources and templates but writes no files and never
+    opens Outlook. Rendering and parsing exceptions propagate. Recipient
+    exclusions, attachment existence, and sender-account selection are checked
+    during delivery.
+    """
+    conf = deepcopy(conf)
+    if not isinstance(conf.get("email"), dict):
+        raise ValueError("La section email est requise")
+    paths = conf.setdefault("paths", {})
+    paths.setdefault("conf_folder", str(Path.cwd()))
+    paths.setdefault("base_search", [paths["conf_folder"]])
+    paths.setdefault("img", paths["conf_folder"])
+    email = conf["email"]
+    email.setdefault("template", "email.html")
+    if "content" not in email or email["content"] == {}:
+        source = getattr(cmd_line_args, "conf_filename", None) or paths.get(
+            "conf_filename"
+        )
+        if not source:
+            raise ValueError(
+                "email.content ou un fichier de configuration est requis"
+            )
+        email["content"] = {"filename": str(Path(source).with_suffix(".md"))}
+    send = getattr(cmd_line_args, "send_mail", "conf")
+    if send != "conf":
+        conf["really_send"] = send == "yes"
+    conf.setdefault("really_send", False)
+    if not isinstance(conf["really_send"], bool):
+        raise ValueError(
+            "really_send doit être un booléen (true ou false, sans guillemets)"
+        )
+    read_excel_list(conf)
+    read_content_filename(conf)
+    if (
+        not isinstance(email.get("subject"), str)
+        or not email["subject"].strip()
+    ):
+        raise ValueError(
+            "email.subject est requis (configuration ou variable Markdown)"
+        )
     env = genenv.GenerationEnvironment(conf)
-    conf = txt2html(conf, env)
-    conf = htmlbody(conf, env)
-    return conf
+    txt2html(conf, env)
+    if not isinstance(email.get("content"), str):
+        raise ValueError("email.content doit contenir txt ou filename")
+    return htmlbody(conf, env)
 
-# -----------------------------------------------------------------------------
-def default_conf():
-    " Read default conf "
-    logging.debug('Load the default configuration.')
-    filename = os.path.join(__get_this_folder(), __DEFAULT_CONF_FILENAME__)
-    return load_conf(filename)
 
-# -----------------------------------------------------------------------------
-def email_excel_list(xl_filename, xl_column, folders = ['./']):
-    "Read excel column email list"
-    logging.info("Read excel file '%s' column '%s'",xl_filename, xl_column)
-    result=[]
-    filename=common.search_for_file(xl_filename,
-                                    folders,
-                                    [os.getcwd(),'./','excel','xl'],2)
-    xl_list = pd.read_excel(filename)
-
-    columns = []
-    if isinstance(xl_column,str):
-        columns.append(xl_column)
-    if isinstance(xl_column,list):
-        columns.extend(xl_column)
-    
-    for col in columns:
-        if col in xl_list:
-            for key in xl_list[col]:
-                if isinstance(key, str) and '@' in key:
-                    result.append(key.lower())
-        logging.info("columns=%20s > number of email=%03d", col, len(result))
-
-    count = len(result)
-    result = list(dict.fromkeys(result))
-    if count != len(result):
-        logging.info("    > Only %d unique", len(result))
-    return result
-
-# -----------------------------------------------------------------------------
-def read_excel_list(conf):
-    " read all excel file"
-    for key in conf:
-        if (isinstance(conf[key], dict)) and \
-            ("excel_file" in conf[key]) and \
-            ("excel_column_name" in conf[key]):
-            emails = email_excel_list(conf[key]["excel_file"],
-                                      conf[key]["excel_column_name"],
-                                      conf['paths']['base_search'])
-            if ('list' not in conf[key]) or \
-                (not isinstance(conf[key]['list'], list)):
-                conf[key]['list']=[]
-            new_list = []
-            for x in conf[key]['list']:
-                if isinstance(x, str) and '@' in key:
-                    new_list.append(x.lower())
-            conf[key]['list']=new_list
-            conf[key]['list'].extend(emails)
-            del conf[key]["excel_file"]
-            del conf[key]["excel_column_name"]
-    return conf
-
-# -----------------------------------------------------------------------------
-def read_content_filename(conf):
-    " read all content filename"
-    for key in conf:
-        if (isinstance(conf[key], dict)) and \
-            ("content" in conf[key]) and \
-            ("filename" in conf[key]["content"]):
-            object = conf[key]["content"]
-            filename=common.search_for_file(object["filename"],
-                                            conf['paths']['base_search'],
-                                            ['./','conf','files'],2)
-            conf[key]['content']['txt'] = common.get_file_content(filename)
-
-            vars = mdinst.get_vars_from_md_text(conf[key]['content']['txt'])
-            for x in vars:
-                logging.info("Override the parameter %s='%s'", x,vars[x])
-                conf[key][x]=vars[x]
-            # conf[key]['content']['txt'] = \
-            #     Template(conf[key]['content']['txt']).render(conf[key])
-
-            del conf[key]["content"]["filename"]
-
-    return conf
-
-# -----------------------------------------------------------------------------
-def md2html(md_content, env, context):
-    context['paths'] = env.template_conf['paths']
-    my_renderer = renderer.RendererDispatch(jinja_env=env.jinja_env,
-                                            context=context)
-    html_converter = mistune.Markdown(renderer=my_renderer)
-
-    return html_converter(md_content)
-
-# -----------------------------------------------------------------------------
-def txt2html(conf, env):
-    for key in conf:
-        if (isinstance(conf[key], dict)) and \
-            ("content" in conf[key]) and \
-            ("txt" in conf[key]["content"]):
-            txt = conf[key]["content"]["txt"]
-            conf[key]['content'] = \
-                md2html(txt, env, conf[key])
-            # print(conf[key]['content'])
-    return conf
-
-# -----------------------------------------------------------------------------
-def htmlbody(conf, env):
-    if 'email' not in conf:
-        logging.warning("no email in config")
-        return conf
-
-    email=conf['email']
-
-    if 'template' not in email:
-        logging.warning("no template in email config")
-        return conf
-    if 'content' not in email:
-        logging.warning("no content in email config")
-        return conf
-
-    html_body = \
-        env.jinja_env.get_template(email['template']).render(email)
-    
-    conf['email']['html_body']=html_body
-    common.set_file_content("essai.html", html_body)
-    return conf
-
-# -----------------------------------------------------------------------------
-# Update meeting points
 # -----------------------------------------------------------------------------
 def new_email(conf):
-    logging.debug("Create outlook email")
-    outlook = win32.Dispatch('outlook.application')
+    """Create an Outlook mail item through the delivery adapter.
 
-    mail = outlook.CreateItem(0)
-    if 'from' not in conf:
-        return mail
-    
-    sender = conf['from']
-    From = None
-    for myEmailAddress in outlook.Session.Accounts:
-        if sender in str(myEmailAddress):
-            From = myEmailAddress
-            break
-
-    if From is not None:
-        # This line basically calls the "mail.SendUsingAccount = xyz@email.com" outlook VBA command
-        mail._oleobj_.Invoke(*(64209, 0, 8, 0, From))
-
-    return mail
-
-
-# -----------------------------------------------------------------------------
-def __send_email(conf, cid={}):
-    email = new_email(conf)
-    
-    email.To = ' ; '.join(conf['to']['list'])
-    if 'cc' in conf and isinstance(conf['cc'], dict) and 'list' in conf['cc']:
-        email.Cc = ' ; '.join(conf['cc']['list'])
-    if 'Bcc' in conf and isinstance(conf['cc'], dict) and 'list' in conf['cc']:
-        email.Cc = ' ; '.join(conf['bcc']['list'])
-    email.Subject = conf['email']['subject']
-    email.HTMLBody = conf['email']['html_body']
-    # email.HTMLBody = Template(conf['email']['html_body']).render(conf['email'])
-
-    # print('-----------------------------------------')
-    # print(conf['email']['content'])
-    # print('-----------------------------------------')
-    # print(email.HTMLBody)
-    # print('-----------------------------------------')
-
-    for cidname in cid:
-        att = email.Attachments.Add(cid[cidname], 1, 0)
-        att.PropertyAccessor.SetProperty('http://schemas.microsoft.com/mapi/proptag/0x3712001F', cidname);
-    
-    if 'attachments' in conf['email']:
-        list_files= conf['email']['attachments']
-        for f in list_files:
-            filename=common.search_for_file(f,
-                                            conf['paths']['base_search'],
-                                            ['./','conf','files'],2)
-            email.Attachments.Add(filename)
-
-    if conf['really_send']:
-        email.Send()
-    else:
-        logging.info(" >>> Email is saved")
-        email.Save()
-
-    return conf
-
-# -----------------------------------------------------------------------------
-def send_email(conf):
-    if ('to' not in conf) or ('list' not in conf['to']):
-        logging.warning("there is no 'to' in the conf")
-        return conf
-    
-    if ('not_to' not in conf) and ('list' not in conf['not_to']):
-        conf['to']['list'] = \
-            [item for item in conf['to']['list'] if item not in conf['not_to']['list']]
-        if 'cc' in conf and isinstance(conf['cc'], dict) and 'list' in conf['cc']:
-            conf['cc']['list'] = \
-                [item for item in conf['cc']['list'] if item not in conf['not_to']['list']]
-        if 'Bcc' in conf and isinstance(conf['Bcc'], dict) and 'list' in conf['Bcc']:
-            conf['Bcc']['list'] = \
-                [item for item in conf['Bcc']['list'] if item not in conf['not_to']['list']]
-
-    # search the cid
-    cid={}
-    search_folder = [conf['paths']['img']] + conf['paths']['base_search']
-    current_text = conf['email']['html_body']
-    # print("------------------------")
-    # print(current_text)
-    # print("------------------------")
-    match_cid = re.search(__cid_re__, current_text)
-    while match_cid is not None:
-        name = match_cid.group('name')
-        filename=common.search_for_file(name,
-                                        search_folder,
-                                        ['./','img', 'conf','files'],2)
-        cid[name]=filename
-        current_text = current_text[match_cid.end(0):]
-        match_cid = re.search(__cid_re__, current_text)
-        
-    if ('individual_email' not in conf['to']) or \
-        (not conf['to']['individual_email']):
-        logging.info(" >>> send email to %s", conf['to']['list'])
-        return __send_email(conf, cid)
-
-    initial_list=[]
-    for email in conf['to']['list']:
-        initial_list.append(email)
-
-    count = 0
-    count_max = len(initial_list)
-    for email in initial_list:
-        count=count+1
-        conf['to']['list'] = [email]
-        logging.info(" %03d/%03d send email to %s", count, count_max, email)
-        __send_email(conf, cid)
-
-    conf['to']['list'] = initial_list
-
-    return conf
-
-
-# -----------------------------------------------------------------------------
-def __get_this_folder():
-    """ Return the folder of this script with frozen compatibility
-    @return the folder of THIS script.
+    This compatibility wrapper imports outlook.new_email on demand and is the
+    factory used by send_email. Calling it accesses COM and may start Outlook;
+    the returned item has not yet been saved or sent.
     """
-    return os.path.split(os.path.abspath(os.path.realpath(
-        __get_this_filename())))[0]
+    # Keep the Outlook adapter unloaded until a mail item is requested.
+    # pylint: disable-next=import-outside-toplevel
+    from .outlook import new_email as create
+
+    return create(conf)
+
 
 # -----------------------------------------------------------------------------
-def __get_this_filename():
-    """ Return the filename of this script with frozen compatibility
-    @return the filename of THIS script.
+def send_email(conf: Configuration) -> Configuration:
+    """Save drafts or send messages using a prepared configuration.
+
+    Args:
+        conf: Output from compute_conf, including email.subject and
+            email.html_body. really_send defaults to False; True sends
+            immediately.
+
+    Returns:
+        The original, unmodified configuration object.
+
+    Raises:
+        ValueError: Recipients, delivery flags, sender account, or email fields
+            are invalid.
+        FileNotFoundError: An attachment or CID image is missing.
+        RuntimeError: The Outlook COM dependency is unavailable.
+
+    Outlook errors propagate. Individual deliveries are sequential: a later
+    failure does not undo earlier saves or sends, and no automatic retry is
+    attempted.
     """
-    return __file__ if not getattr(sys, 'frozen', False) else sys.executable
+    # HTML preparation does not need the Outlook delivery adapter.
+    # pylint: disable-next=import-outside-toplevel
+    from .outlook import deliver
+
+    return deliver(conf, mail_factory=new_email)

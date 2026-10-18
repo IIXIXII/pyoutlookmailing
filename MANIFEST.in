@@ -1,0 +1,15 @@
+include README.md LICENSE requirements.txt requirements-dev.txt
+include constraints-windows-py314.txt
+recursive-include docs *.md
+recursive-include examples *.md *.mailmd *.yaml
+recursive-include scripts *.py
+include scripts/install_mailmd.bat scripts/uninstall_mailmd.bat
+include scripts/run_mailmd.bat scripts/mailmd_association.bat
+recursive-include tests *.py
+recursive-include template *.html *.j2
+prune tests/mails
+prune tests/__archives__
+prune mails
+prune audit-artifacts
+prune win-shortcuts
+exclude essai.html

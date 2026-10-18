@@ -1,0 +1,12 @@
+<!-- var(conf/really_send) = false -->
+<!-- var(conf/to/list) = "[Recipient](mailto:recipient@example.org)" -->
+<!-- var(subject) = "Invitation" -->
+<!-- var(summary) = "Markdown email example" -->
+
+Hello,
+
+You are invited to our **next meeting**.
+
+[View the agenda](https://example.org/agenda)
+
+See you soon!

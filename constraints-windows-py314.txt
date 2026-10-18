@@ -20,7 +20,7 @@ python-dateutil==2.9.0.post0
 pywin32==311
 pyyaml==6.0.3
 six==1.17.0
-soupsieve==2.10
+soupsieve==3.0.3
 typing-extensions==4.15.0
 tzdata==2025.3
 unidecode==1.4.0

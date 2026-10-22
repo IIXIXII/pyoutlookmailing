@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 from bs4 import BeautifulSoup
-from jinja2 import DictLoader, Environment
+from jinja2 import ChoiceLoader, DictLoader, Environment, PackageLoader
 
 from pyoutlookmailing import genenv, renderer
 
@@ -139,6 +139,92 @@ def test_inline_image_uses_real_mime_type(tmp_path):
     assert image is not None
     assert image["src"] == "data:image/jpeg;base64,anBlZw=="
     assert renderer.html_img(picture).startswith('<img src="data:image/jpeg;')
+
+
+# -----------------------------------------------------------------------------
+@pytest.mark.parametrize("packaged", [False, True])
+@pytest.mark.parametrize("model", ["default", "fi", "apt", "unfold"])
+@pytest.mark.parametrize("align", [None, "center", "left", "right"])
+def test_standalone_image_alignment_does_not_depend_on_css_margins(
+    packaged, model, align
+):
+    environment = genenv.get_default_jinja_env(
+        {
+            "jinja": str(ROOT / "template/jinja"),
+            "template": str(ROOT / "template/html"),
+        }
+    )
+    if packaged:
+        assert environment.loader is not None
+        environment.loader = ChoiceLoader(
+            [
+                PackageLoader("pyoutlookmailing", "templates"),
+                environment.loader,
+            ]
+        )
+    instructions = "<!-- cid=True --><!-- width=80% -->"
+    if align:
+        instructions += f"<!-- align={align} -->"
+    markdown = f"![Agenda {instructions}](<agenda with spaces.png>)"
+    html = renderer.create_markdown(environment, {"model": model})(markdown)
+    soup = BeautifulSoup(html, "html.parser")
+    image = soup.img
+    assert image is not None
+    cell = image.find_parent("td")
+    assert cell is not None
+    assert cell["align"] == (align or "center")
+    assert f"text-align:{align or 'center'};" in cell["style"]
+    assert image.find_parent("p") is None
+    table = cell.find_parent("table")
+    assert table is not None
+    assert table["role"] == "presentation"
+    assert table["width"] == "100%"
+    assert image["width"] == "80%"
+    assert str(image["src"]).startswith("cid:agenda")
+
+
+# -----------------------------------------------------------------------------
+@pytest.mark.parametrize("model", ["default", "fi", "apt", "unfold"])
+def test_linked_standalone_image_keeps_link_and_html_centering(model):
+    html = parser({"model": model})(
+        "[![Agenda](https://example.org/agenda.png)]"
+        "(https://example.org/programme)"
+    )
+    image = BeautifulSoup(html, "html.parser").img
+    assert image is not None
+    anchor = image.find_parent("a")
+    assert anchor is not None
+    assert anchor["href"] == "https://example.org/programme"
+    cell = image.find_parent("td")
+    assert cell is not None and cell["align"] == "center"
+    assert image.find_parent("p") is None
+    assert "width" not in image.attrs
+
+
+# -----------------------------------------------------------------------------
+@pytest.mark.parametrize("model", ["default", "fi", "apt", "unfold"])
+def test_image_inside_text_does_not_split_the_paragraph(model):
+    html = parser({"model": model})(
+        "Before ![Icon](https://example.org/icon.png) after."
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    image = soup.img
+    assert image is not None
+    paragraph = image.find_parent("p")
+    assert paragraph is not None
+    assert paragraph.get_text(strip=True) == "Beforeafter."
+    assert soup.select_one("table.mail-image") is None
+
+
+# -----------------------------------------------------------------------------
+def test_image_in_tight_list_has_a_centered_cell_inside_the_list_item():
+    html = parser()("- ![Agenda](https://example.org/agenda.png)")
+    image = BeautifulSoup(html, "html.parser").img
+    assert image is not None
+    assert image.find_parent("li") is not None
+    cell = image.find_parent("td")
+    assert cell is not None and cell["align"] == "center"
+    assert image.find_parent("p") is None
 
 
 # -----------------------------------------------------------------------------

@@ -40,13 +40,23 @@ def _merge(
     Nested mappings are merged recursively. Lists are concatenated in base-then-
     override order; other values from override replace the corresponding base
     value. Set concatenate_lists=False when applying user defaults or profiles;
-    in that case an override list replaces the inherited list.
+    in that case an override list replaces the inherited list. Exclusions under
+    not_to always accumulate; a null override cannot erase them.
     """
     result = deepcopy(dict(base))
     for key, value in override.items():
+        if (
+            key == "not_to"
+            and value is None
+            and isinstance(result.get(key), Mapping)
+        ):
+            # A local null must not erase shared exclusions.
+            continue
         if isinstance(result.get(key), dict) and isinstance(value, Mapping):
             result[key] = _merge(
-                result[key], value, concatenate_lists=concatenate_lists
+                result[key],
+                value,
+                concatenate_lists=concatenate_lists or key == "not_to",
             )
         elif (
             concatenate_lists
@@ -57,6 +67,38 @@ def _merge(
         else:
             result[key] = deepcopy(value)
     return result
+
+
+# -----------------------------------------------------------------------------
+def _remember_blacklist_sources(
+    conf: Configuration, source_folder: str | os.PathLike
+) -> None:
+    """Retain each layer's Excel exclusions for deferred loading.
+
+    This mutates only the configuration being assembled. Workbook contents are
+    read later by compute_conf, after all defaults and overrides are known.
+    Sources keep their own search folders, with campaign folders as fallback.
+    """
+    section = conf.get("not_to")
+    if section is None:
+        return
+    if not isinstance(section, dict):
+        raise ValueError("not_to doit être un objet YAML")
+    if "_excel_sources" in section:
+        raise ValueError("not_to._excel_sources est réservé au chargeur")
+    keys = ("excel_file", "excel_column_name")
+    if not any(key in section for key in keys):
+        return
+    paths = conf.get("paths", {})
+    folders = paths.get(
+        "base_search", [str(source_folder), paths.get("root", source_folder)]
+    )
+    section["_excel_sources"] = [
+        {
+            **{key: deepcopy(section[key]) for key in keys if key in section},
+            "folders": list(dict.fromkeys(str(folder) for folder in folders)),
+        }
+    ]
 
 
 # -----------------------------------------------------------------------------
@@ -182,6 +224,7 @@ def _read_yaml(filename: Path, active: tuple[Path, ...] = ()) -> Configuration:
     if paths:
         own_paths = {k: v for k, v in paths.items() if k != "includes"}
         data["paths"] = expand_paths(own_paths, filename.parent)
+    _remember_blacklist_sources(data, filename.parent)
     result = _merge(result, data)
     result.setdefault("paths", {})["conf_folder"] = str(filename.parent)
     result["paths"]["conf_filename"] = str(filename)
@@ -243,6 +286,15 @@ def read_yaml(
     if use_preferences:
         store, common = read_preferences(preferences)
         common = expand_preferences_paths(common, store.path.parent)
+        _remember_blacklist_sources(common, store.path.parent)
+        for values in common.get("profiles", {}).values():
+            profile_paths = {
+                **common.get("paths", {}),
+                **values.get("paths", {}),
+            }
+            _remember_blacklist_sources(
+                {**values, "paths": profile_paths}, store.path.parent
+            )
         profiles = common.pop("profiles", {})
         selected = profile if profile is not None else result.get("profile")
         if selected is not None:
@@ -253,11 +305,11 @@ def read_yaml(
                     f"Profil upref inconnu : {selected!r} ({store.path})"
                 )
             common = _merge(common, profiles[selected], concatenate_lists=False)
+            logger.info("Profil upref : %s", selected)
         if common:
-            logger.info("Préférences communes : %s", store.path)
-            if selected is not None:
-                logger.info("Profil : %s", selected)
             result = _merge(common, result, concatenate_lists=False)
+    else:
+        logger.info("Préférences upref désactivées")
     paths = result.setdefault("paths", {})
     paths["conf_folder"] = str(filename.parent)
     paths["conf_filename"] = str(filename)
@@ -347,7 +399,9 @@ def _addresses(values: Any, field: str) -> list[str]:
 
 
 # -----------------------------------------------------------------------------
-def email_excel_list(xl_filename, xl_column, folders=None) -> list[str]:
+def email_excel_list(
+    xl_filename, xl_column, folders=None, *, _tables=None, _field="excel"
+) -> list[str]:
     """Read normalized email addresses from the first worksheet of an Excel
     file.
 
@@ -356,6 +410,9 @@ def email_excel_list(xl_filename, xl_column, folders=None) -> list[str]:
         xl_column: One column name or a nonempty list of column names.
         folders: Search roots; a missing or empty value uses the working
             directory.
+        _tables: Internal per-preparation workbook cache, never retained across
+            calls to compute_conf. Callers normally leave this unset.
+        _field: Section name included in import diagnostics.
 
     Returns:
         Unique lowercase addresses in column order, then row order. Blank cells
@@ -376,10 +433,13 @@ def email_excel_list(xl_filename, xl_column, folders=None) -> list[str]:
     filename = find_file(
         xl_filename, folders or [Path.cwd()], ("", "excel", "xl")
     )
-    table = pd.read_excel(filename)
-    columns = [xl_column] if isinstance(xl_column, str) else xl_column
-    if not isinstance(columns, list) or not columns:
-        raise ValueError("excel_column_name doit désigner au moins une colonne")
+    if _tables is not None and filename in _tables:
+        table = _tables[filename]
+    else:
+        table = pd.read_excel(filename)
+        if _tables is not None:
+            _tables[filename] = table
+    columns = _excel_columns(xl_column)
     result = []
     for column in columns:
         if column not in table:
@@ -387,24 +447,97 @@ def email_excel_list(xl_filename, xl_column, folders=None) -> list[str]:
         result.extend(
             v for v in table[column] if isinstance(v, str) and v.strip()
         )
-    return _addresses(result, "excel")
+    addresses = _addresses(result, _field)
+    logger.info(
+        "Import Excel %s : %s ; colonnes=%s ; %d adresses",
+        _field,
+        filename,
+        ", ".join(columns),
+        len(addresses),
+    )
+    return addresses
+
+
+# -----------------------------------------------------------------------------
+def _excel_columns(value) -> list[str]:
+    """Validate one column name or a nonempty list of column names."""
+    columns = [value] if isinstance(value, str) else value
+    if (
+        not isinstance(columns, list)
+        or not columns
+        or not all(
+            isinstance(column, str) and column.strip() for column in columns
+        )
+    ):
+        raise ValueError("excel_column_name doit désigner au moins une colonne")
+    return columns
+
+
+# -----------------------------------------------------------------------------
+def _read_blacklist(section, folders, tables) -> None:
+    """Combine manual and Excel exclusions; reject incomplete Excel sources."""
+    if not isinstance(section, dict):
+        raise ValueError("not_to doit être un objet YAML")
+    addresses = _addresses(section.get("list"), "not_to")
+    sources = section.get("_excel_sources")
+    if sources is None:
+        sources = (
+            [section]
+            if any(
+                key in section for key in ("excel_file", "excel_column_name")
+            )
+            else []
+        )
+    seen = set()
+    for source in sources:
+        filename = source.get("excel_file", section.get("excel_file"))
+        columns = source.get(
+            "excel_column_name", section.get("excel_column_name")
+        )
+        if not filename or columns is None:
+            raise ValueError(
+                "not_to.excel_file et not_to.excel_column_name sont requis "
+                "pour charger la blacklist Excel"
+            )
+        columns = _excel_columns(columns)
+        roots = list(dict.fromkeys([*source.get("folders", []), *folders]))
+        filename = find_file(filename, roots, ("", "excel", "xl"))
+        identity = (filename, tuple(columns))
+        if identity in seen:
+            continue
+        seen.add(identity)
+        addresses.extend(
+            email_excel_list(filename, columns, _tables=tables, _field="not_to")
+        )
+    section["list"] = list(dict.fromkeys(addresses))
+    for key in ("excel_file", "excel_column_name", "_excel_sources"):
+        section.pop(key, None)
 
 
 # -----------------------------------------------------------------------------
 def read_excel_list(conf: Configuration) -> Configuration:
     """Merge Excel addresses into configuration sections in place.
 
-    Each section with excel_file uses excel_column_name and its existing list.
-    Manual addresses come first; imported duplicates are removed. Consumed Excel
-    keys are deleted after a successful import. Without a column selector, a
-    nonempty manual list is used alone; otherwise ValueError is raised.
+    Manual addresses come first; imported duplicates are removed. Workbooks are
+    cached only for this call. not_to combines Excel sources from every config
+    layer and requires complete Excel settings; it never disables an Excel
+    blacklist by falling back to manual addresses. Other sections retain the
+    legacy manual-only fallback when excel_column_name is absent.
 
     Returns:
         The same configuration object. Earlier sections may already be updated
         if a later section fails; compute_conf protects callers by copying
         first.
     """
+    tables: dict[Path, Any] = {}
     for key, section in conf.items():
+        if key == "not_to" and section is not None:
+            _read_blacklist(
+                section,
+                conf.get("paths", {}).get("base_search", [Path.cwd()]),
+                tables,
+            )
+            continue
         if isinstance(section, dict) and "excel_file" in section:
             if "excel_column_name" not in section:
                 # Existing campaigns disable the Excel source by commenting
@@ -422,6 +555,8 @@ def read_excel_list(conf: Configuration) -> Configuration:
                 section["excel_file"],
                 section["excel_column_name"],
                 conf["paths"]["base_search"],
+                _tables=tables,
+                _field=key,
             )
             section["list"] = _addresses(section.get("list"), key)
             section["list"] = list(dict.fromkeys(section["list"] + imported))

@@ -20,13 +20,8 @@
 {% if title is defined -%}
     title="{{title}}"
 {%- endif %}
-{% if align is defined -%}
-	{% if align == "right" -%}
-		style="float:right"
-	{% elif align == "left" -%}
-		style="float:left"
-	{% else -%}
-		style="margin: auto;display: block;"
-	{%- endif %}
+{% if width is defined -%}
+    width="{{ width }}"
 {%- endif %}
+    style="{% if width is defined %}width:{{ width }};max-width:100%;height:auto;{% endif %}{% if align == 'right' %}float:right;{% elif align == 'left' %}float:left;{% else %}margin:0 auto;display:block;{% endif %}"
 />

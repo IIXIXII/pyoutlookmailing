@@ -16,7 +16,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from pyoutlookmailing import cli, core, windows_launcher
+from pyoutlookmailing import cli, core, preferences, windows_launcher
 from pyoutlookmailing import windows_association as association
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -403,6 +403,9 @@ def test_run_mailmd_batch_renders_selected_file_without_using_outlook(tmp_path):
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "<strong>à tous</strong>" in destination.read_text(encoding="utf-8")
+    assert "Fichier upref" in result.stderr
+    assert str(preferences.get_preferences_store().path) in result.stderr
+    assert "Fichier upref absent" in result.stderr
 
 
 # -----------------------------------------------------------------------------
@@ -449,6 +452,7 @@ def test_mailmd_console_applies_user_profile_on_each_run(tmp_path):
     html = destination.read_text(encoding="utf-8")
     assert "Bonjour." in html
     assert "<footer>Shared EBW profile</footer>" in html
+    assert result.stderr.count("Fichier upref") == 2
     assert result.stderr.count(str(store.path)) == 2
 
 
@@ -481,6 +485,11 @@ def test_mailmd_console_retries_preserve_options_and_status(
     )
     assert result.returncode == (0 if valid else 1), (
         result.stdout + result.stderr
+    )
+    assert result.stdout.count("____        _   _") == 1
+    assert "╔══" in result.stdout
+    assert result.stdout.index("____        _   _") < result.stdout.index(
+        "PYOUTLOOKMAILING - traitement du courriel"
     )
     assert (
         result.stdout.count("PYOUTLOOKMAILING - traitement du courriel") == runs

@@ -24,6 +24,12 @@ IF NOT EXIST "%PYTHON%" (
 
 TITLE [pyoutlookmailing] MAILMD
 
+REM Display the shared logo once when opening the console, before any retries.
+IF EXIST "%~dp0common.bat" IF EXIST "%~dp0logo.bat" (
+  CALL "%~dp0common.bat" :CONFIGURE_DISPLAY
+  CALL "%~dp0logo.bat" :PRINT_LOGO
+)
+
 :STARTAGAIN
 ECHO ================================================================================
 ECHO    PYOUTLOOKMAILING - traitement du courriel

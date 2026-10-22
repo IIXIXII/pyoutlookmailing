@@ -51,15 +51,21 @@ interactive batch console.
 
 ## Process a `.mailmd` file
 
-Double-clicking a registered file opens the batch console. It respects the
-configuration's `really_send`: `true` sends, while `false` or absent saves
-drafts. An adjacent `.local.conf` override is also loaded.
+Double-clicking a registered file opens the batch console. It respects the final
+merged `really_send`, including Upref defaults: `true` sends, while `false` saves
+drafts. If no layer defines it, the default is `false`. An adjacent `.local.conf`
+override is also loaded.
 
 Common [Upref preferences](PREFERENCES.md) load automatically for the Windows
 account, including a profile selected with `var(conf/profile)`. The console logs
-the preference file when it applies settings. No association reinstall is needed.
+`Fichier upref (valeurs par défaut)` followed by the absolute preference filename
+before reading it, including when it is missing, empty, or invalid. Edit that
+file to change shared defaults. Explicit campaign values take priority.
+With `--no-preferences`, the console states that Upref is disabled instead.
+No association reinstall is needed.
 
-The console displays the file, command, and result, then offers another run after
+The console displays the shared logo from `scripts/logo.bat` once at startup.
+It then displays the file, command, and result, and offers another run after
 either success or failure. The existing Windows prompts are in French:
 press **O** (`Oui`, yes) to run again or **N** (`Non`, no) to close the console.
 Each run rereads the source, configuration, and common preferences, so you can edit them before

@@ -94,8 +94,9 @@ python -m pyoutlookmailing.preferences --import examples/preferences.yaml
 ```
 
 Campaigns automatically load these per-user settings through Upref. Select a
-profile with `<!-- var(conf/profile) = "ebw" -->`; keep recipients and
-`really_send` in the campaign. Campaign settings override shared values.
+profile with `<!-- var(conf/profile) = "ebw" -->`; keep recipient addresses in
+the campaign. Upref can also supply `really_send` and `to.individual_email`
+defaults. Explicit campaign settings override shared values.
 Use `--no-preferences` to ignore the store or `--preferences FILE` to select
 a portable file. See [common preferences](docs/PREFERENCES.md) for setup and
 merge rules.

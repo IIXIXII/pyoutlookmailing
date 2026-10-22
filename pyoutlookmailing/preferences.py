@@ -13,6 +13,7 @@ store location or explicitly imports validated preferences into that store.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from pathlib import Path
@@ -21,7 +22,16 @@ from typing import Any
 from upref import ConfigStore
 
 PREFERENCES_ENV = "PYOUTLOOKMAILING_PREFERENCES"
-COMMON_SECTIONS = {"from", "paths", "email"}
+COMMON_SECTIONS = {
+    "from",
+    "paths",
+    "email",
+    "not_to",
+    "really_send",
+    "to",
+    "cc",
+    "bcc",
+}
 CAMPAIGN_EMAIL_FIELDS = {
     "subject",
     "summary",
@@ -30,6 +40,7 @@ CAMPAIGN_EMAIL_FIELDS = {
     "attachments",
 }
 SOURCE_PATH_FIELDS = {"includes", "conf_folder", "conf_filename"}
+logger = logging.getLogger(__name__)
 
 
 # -----------------------------------------------------------------------------
@@ -81,6 +92,18 @@ def _validate_common(data: Any, context: str) -> None:
         not isinstance(data["from"], str) or not data["from"].strip()
     ):
         raise ValueError(f"{context}.from doit être une adresse non vide")
+    if "really_send" in data and not isinstance(data["really_send"], bool):
+        raise ValueError(f"{context}.really_send doit être un booléen")
+    if "to" in data:
+        _validate_delivery_defaults(data["to"], f"{context}.to")
+    for field in ("cc", "bcc"):
+        if field in data and data[field] is not None and data[field] != {}:
+            raise ValueError(
+                f"{context}.{field} doit être null ou un objet vide ; "
+                "les destinataires appartiennent à la campagne"
+            )
+    if "not_to" in data:
+        _validate_blacklist_defaults(data["not_to"], f"{context}.not_to")
     if "paths" in data:
         paths = data["paths"]
         if not isinstance(paths, dict):
@@ -111,6 +134,64 @@ def _validate_common(data: Any, context: str) -> None:
 
 
 # -----------------------------------------------------------------------------
+def _validate_delivery_defaults(data: Any, context: str) -> None:
+    """Allow the individual-email default without shared delivery addresses."""
+    if data is None:
+        return
+    if not isinstance(data, dict):
+        raise ValueError(f"{context} doit être un objet ou null")
+    unexpected = set(data) - {"individual_email"}
+    if unexpected:
+        raise ValueError(
+            f"{context} : seul individual_email peut être partagé ; "
+            "les destinataires appartiennent à la campagne"
+        )
+    if "individual_email" in data and not isinstance(
+        data["individual_email"], bool
+    ):
+        raise ValueError(f"{context}.individual_email doit être un booléen")
+
+
+# -----------------------------------------------------------------------------
+def _validate_blacklist_defaults(data: Any, context: str) -> None:
+    """Validate shared exclusions; preferences cannot add delivery targets."""
+    if data is None:
+        return
+    if not isinstance(data, dict):
+        raise ValueError(f"{context} doit être un objet ou null")
+    allowed = {"list", "excel_file", "excel_column_name"}
+    unexpected = set(data) - allowed
+    if unexpected:
+        raise ValueError(
+            f"{context} : champs inconnus : {', '.join(sorted(unexpected))}"
+        )
+    if "list" in data and (
+        not isinstance(data["list"], list)
+        or not all(isinstance(value, str) for value in data["list"])
+    ):
+        raise ValueError(f"{context}.list doit être une liste d'adresses")
+    if "excel_file" in data and (
+        not isinstance(data["excel_file"], str)
+        or not data["excel_file"].strip()
+    ):
+        raise ValueError(f"{context}.excel_file doit être un chemin non vide")
+    if "excel_column_name" in data:
+        columns = data["excel_column_name"]
+        if isinstance(columns, str):
+            columns = [columns]
+        if (
+            not isinstance(columns, list)
+            or not columns
+            or not all(
+                isinstance(column, str) and column.strip() for column in columns
+            )
+        ):
+            raise ValueError(
+                f"{context}.excel_column_name doit désigner des colonnes"
+            )
+
+
+# -----------------------------------------------------------------------------
 def _validate_paths(paths: dict, context: str) -> None:
     """Check paths before an explicit import can write invalid preferences."""
     for name, value in paths.items():
@@ -132,10 +213,11 @@ def _validate_paths(paths: dict, context: str) -> None:
 def validate_preferences(data: dict[str, Any]) -> None:
     """Validate global settings and every named profile in a loaded mapping.
 
-    Only sender, resource paths, and common email presentation fields belong in
-    preferences. Recipients, content, attachments, and really_send stay in the
-    campaign. The optional profiles mapping contains independent common-setting
-    overrides. Upref separately checks serializable types and string keys.
+    Sender, paths, presentation, exclusions, really_send and individual_email
+    defaults may be shared. Delivery addresses, content and attachments stay
+    in the campaign; Cc/Bcc defaults can only be empty. The optional profiles
+    mapping contains common-setting overrides. Upref separately checks
+    serializable types and string keys.
 
     Raises:
         ValueError: A common setting or profile has an invalid shape or field.
@@ -163,6 +245,9 @@ def read_preferences(
 ) -> tuple[ConfigStore, dict[str, Any]]:
     """Load and validate a fresh preference tree without writing or prompting.
 
+    Log the resolved filename before reading, even for missing, empty, or
+    invalid settings. This makes the editable location visible in batch logs.
+
     Returns:
         The resolved store and its detached preferences. A missing or empty
         file returns an empty dictionary. The profile is selected by core.
@@ -172,8 +257,14 @@ def read_preferences(
         upref.UprefError: Storage path, YAML data, or file access is invalid.
     """
     store = get_preferences_store(filename)
+    logger.info("Fichier upref (valeurs par défaut) : %s", store.path)
     data = store.load()
     validate_preferences(data)
+    if not data:
+        status = "vide" if store.exists() else "absent"
+        logger.info(
+            "Fichier upref %s : aucune préférence commune appliquée", status
+        )
     return store, data
 
 

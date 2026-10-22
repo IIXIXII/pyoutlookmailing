@@ -124,7 +124,9 @@ automatically load their own local overrides.
 Content variables such as `var(subject)` and `var(model)` retain the pymdtools
 syntax and must have unique names. They cannot replace `content`, `html_body`, or
 `attachments`. Explicit `--send-mail yes` or `--send-mail no` overrides the final
-top-level `really_send` value. Its absence defaults to `false`.
+top-level `really_send` value. Upref may supply `really_send` and
+`to.individual_email` defaults; campaign values override them. If no layer
+defines `really_send`, it defaults to `false`.
 
 Passing `--conf campaign.md` selects that file's embedded configuration even if
 `campaign.conf` also exists. When a selected `.conf` reads a Markdown body,
@@ -183,9 +185,33 @@ checks column names, then trims, lowercases, validates, and deduplicates address
 Manual addresses come before imported addresses. If `excel_column_name` is
 absent, a nonempty manual `list` is used alone even when `excel_file` remains
 configured; an empty manual list without a column selector is an error.
+For `not_to`, both Excel settings are required: an incomplete Excel blacklist
+raises an error even when manual exclusions exist. Workbooks are read once per
+preparation, shared by recipient and exclusion imports, then reread on the next run.
 
 Exclusions apply to To, Cc, and Bcc. Deduplication occurs within each category.
-The legacy uppercase `Bcc` section is accepted when lowercase `bcc` is absent.
+Comparison uses complete addresses, ignoring case and surrounding whitespace;
+it does not infer aliases, expand Outlook distribution lists, or match domains.
+Manual exclusions and Excel blacklist sources accumulate across Upref defaults,
+the selected profile, includes, the main file, and its local override. An empty
+local list or `null` cannot clear inherited exclusions. Each source's workbook
+and columns are retained, even when another layer names a different workbook.
+Relative source lookup first uses that layer's folders, then campaign search roots.
+
+Before delivery, logs show the resolved Excel filename, selected columns and
+address count, followed by the blacklist size and removal counts for To/Cc/Bcc.
+Each removed address is logged as `Exclu (not_to) : address [category]`.
+The success log places the destination immediately after `envoyé` or
+`brouillon enregistré`, including Cc/Bcc labels where present. For example:
+
+```text
+INFO: Blacklist not_to : 1 adresses ; exclusions To=1, Cc=0, Cci=0
+INFO: Exclu (not_to) : blocked@example.org [to]
+INFO: Message 1/1 : envoyé allowed@example.org
+```
+
+The legacy uppercase `Bcc` section is accepted when lowercase `bcc` is absent
+or `null`.
 At least one recipient must remain after exclusions. With
 `to.individual_email: true`, each remaining To address gets a separate message;
 Cc and Bcc are repeated on every message, and at least one To address is required.
@@ -220,10 +246,51 @@ contains the rendered HTML fragment. Renderer models are `fi`, `apt`, and
 instructions can also select a model, for example `# Heading <!-- model:unfold -->`.
 See [Rendering extensions](API.md#rendering-extensions) for component details.
 
+For a configurable registration button, use
+`[<!-- link-model=button2 -->Register](https://example.org/register)` in its own
+paragraph. See [button parameters and examples](BUTTONS.md) for colors, sizes,
+alignment, spacing, typography, and Outlook rendering.
+
 `email.attachments` is a list of filenames. Refer to inline attachments in
-Markdown as `![Logo](cid:logo.png)`. Each distinct content ID is attached once
-per message. URL-encoded filenames are decoded for local file lookup. HTML
-previews retain `cid:` references, so these images may not display in a browser.
+Markdown as `![Logo <!-- cid=True -->](logo.png)`. URL-encoded filenames are
+decoded for local file lookup. Each resolved image file is attached once per
+message, even when referenced through both plain and encoded filenames.
+
+At delivery, the adapter replaces filename-based references with unique ASCII
+Content-IDs and sets the matching attachment IDs and MIME types. It also sets
+inline/hidden flags when Outlook permits them.
+This avoids mismatches caused by spaces, accents, or URL encoding when another
+client, such as Gmail, resolves the images. The Markdown filenames and rendering
+options do not need to change. Outlook performs the final MIME serialization.
+See Microsoft's [inline attachment requirements](https://learn.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcmail/96ee0694-0902-43d2-97d3-40f1fad626e7).
+
+Some Outlook stores refuse changes to `PR_ATTACH_FLAGS` (`0x37140003`) or the
+hidden flag. In that case, the console reports a warning and retains the
+matching Content-ID and MIME type; it does not stop solely for those optional
+flags. Required-property errors and other failures still stop delivery.
+
+HTML previews retain filename-based `cid:` references, so these images may not
+display in a browser. The `inline=true` rendering instruction instead embeds a
+`data:` URL; it does not create an inline MIME attachment. Use `cid=True` for
+the attached-image delivery path described here.
+
+Set an image's width as a percentage of its containing element with a `width`
+instruction inside the alternative text:
+
+```markdown
+![Agenda <!-- cid=True --><!-- width=80% -->](<agenda with spaces.png>)
+```
+
+The image keeps its aspect ratio and its CSS width is capped at 100% of the
+container. This works with CID, remote, and Base64 images, using either the
+repository's `image.j2` or the packaged fallback. Without `width`, the existing
+image sizing is preserved. Standalone images are centered by default in both
+templates, with or without `width`. Their containing table cell has an explicit
+HTML alignment, so centering does not rely only on CSS image margins. The image
+is not wrapped in a justified paragraph. This also applies to clickable images.
+Use `<!-- align=left -->` or `<!-- align=right -->` to override the default;
+`<!-- align=center -->` explicitly selects centering. Images within a paragraph
+of text keep their surrounding text rather than creating a separate image block.
 
 Jinja autoescapes ordinary variables in `.html`, `.xml`, and `.j2` templates;
 generated HTML fragments are marked as trusted. Authored raw HTML is preserved

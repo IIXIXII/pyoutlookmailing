@@ -669,6 +669,60 @@ class RendererDispatch(mistune.ClosingHTMLRenderer):
         return super().__call__(tokens, state)
 
     # --------------------------------------------------------------------------
+    def render_token(self, token, state):
+        """Render standalone images and button2 links as layout blocks.
+
+        Inspect parsed tokens so linked images are supported and images inside
+        text stay inline. Keep button tables out of paragraph tags. Bypass
+        justified paragraph templates for image blocks. FI content still needs
+        its surrounding table row.
+        """
+        if token["type"] not in {"paragraph", "block_text"}:
+            return super().render_token(token, state)
+        children = token.get("children", [])
+        standalone = children[0] if len(children) == 1 else {}
+        button = standalone
+        while button.get("type") in {"strong", "emphasis"}:
+            decorated = button.get("children", [])
+            button = decorated[0] if len(decorated) == 1 else {}
+        if button.get("type") == "link":
+            label = button.get("children", [])
+            instructions = read_instructions(self.render_tokens(label, state))
+            if instructions.get("link-model") == "button2":
+                content = self.render_tokens([button], state)
+                if token["type"] == "paragraph" and isinstance(
+                    self.get_renderer(), RendererFi
+                ):
+                    return f"<tr><td>{content}</td></tr>"
+                return content
+        image = standalone
+        if image.get("type") == "link":
+            linked = image.get("children", [])
+            image = linked[0] if len(linked) == 1 else {}
+        if image.get("type") != "image":
+            return super().render_token(token, state)
+
+        instructions = read_instructions(
+            self.render_tokens(image.get("children", []), state)
+        )
+        align = instructions.get("align", "center")
+        if align not in {"left", "right", "center"}:
+            align = "center"
+        component = self.get_renderer()
+        return (
+            self._kwargs["jinja_env"]
+            .get_template("image_block.j2")
+            .render(
+                content=Markup(self.render_tokens(children, state)),
+                align=align,
+                table_row=(
+                    token["type"] == "paragraph"
+                    and isinstance(component, RendererFi)
+                ),
+            )
+        )
+
+    # --------------------------------------------------------------------------
     @property
     def level(self):
         """Return the heading level, or zero before the first heading."""

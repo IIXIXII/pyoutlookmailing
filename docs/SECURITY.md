@@ -51,6 +51,10 @@ and integration review if introduced later.
 These recorded local package changes are not a substitute for checking the
 dependencies installed in another environment.
 
+At the user's request, current delivery logs include destination addresses after
+the sent/draft status, Cc/Bcc when present, and addresses removed by `not_to`.
+This supersedes the historical log-minimization change recorded above.
+
 ## Input trust and data handling
 
 Markdown, Jinja templates, and configuration files are **trusted author inputs**.

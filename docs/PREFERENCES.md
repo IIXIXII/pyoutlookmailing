@@ -8,6 +8,20 @@ The application loads it automatically for the CLI, Python `load_conf`, and
 or writing anything. A missing or empty preference file changes no campaign
 behavior. Invalid preferences stop processing with an error.
 
+At the normal INFO log level, each preference load prints its absolute filename
+before reading it. This also appears in the Windows batch console:
+
+```text
+INFO: Fichier upref (valeurs par défaut) : C:\Users\name\AppData\Local\pyoutlookmailing\preferences.yaml
+```
+
+The location remains visible if the file is missing, empty, or invalid. A missing
+or empty file gets an additional status message; loading never creates it.
+`--preferences FILE` and the environment override are reflected in the logged
+location. `--no-preferences` instead logs that Upref preferences are disabled.
+Open the displayed file in a text editor to change common defaults, then rerun
+the campaign. Explicit campaign values continue to take priority.
+
 ## Initialize preferences
 
 From an installed checkout, print the location:
@@ -56,6 +70,11 @@ The document uses the campaign's familiar nested structure:
 
 ```yaml
 from: sender@example.org
+really_send: false
+to:
+  individual_email: true
+cc: null
+bcc: null
 paths:
   root: C:/dev/pyoutlookmailing
   jinja: template/jinja
@@ -73,15 +92,35 @@ profiles:
       model: apt
 ```
 
-Common settings accept `from`, resource `paths`, and presentation fields under
-`email`, including `template`, `model`, and custom template variables. An optional
+Common settings accept `from`, `not_to`, resource `paths`, and presentation fields
+under `email`, including `template`, `model`, and custom template variables. They
+also accept boolean delivery defaults `really_send` and `to.individual_email`.
+`cc` and `bcc` can be `null` or empty mappings, without shared addresses. An optional
 `profiles` mapping contains named overrides of these same common fields.
 Profile names are nonempty and case-sensitive. There is no implicit active profile.
 
-Recipients (`to`, `cc`, `bcc`, `not_to`), `really_send`, subject, summary, content,
+Recipient addresses, subject, summary, content,
 generated HTML, and attachments belong to the campaign and are rejected in
 preferences, including profiles. Includes and computed source metadata also
-belong to the campaign. A missing campaign `really_send` still defaults to `false`.
+belong to the campaign.
+
+If common settings specify `really_send: true`, a campaign without its own value
+sends messages. A campaign's explicit `really_send: false` overrides that default;
+`--send-mail no` has the highest priority and saves drafts. If no configuration
+layer defines `really_send`, the effective value remains `false`. Preview mode
+never delivers, including when the inherited setting is `true`.
+
+The same override rule applies to `to.individual_email`: an inherited `true`
+creates one message per allowed To address; a campaign can explicitly set it
+to `false`. Disabling preferences with `--no-preferences` ignores these common
+delivery defaults too.
+
+Shared `not_to` settings are exclusions only; they cannot add delivery targets.
+They accept manual `list` entries, `excel_file`, and `excel_column_name`, using
+the [same format as campaign exclusions](CONFIGURATION.md#recipients-sender-and-delivery).
+All manual and Excel exclusions accumulate across common settings, profiles,
+includes, the campaign, and local overrides. Empty campaign values cannot clear
+shared exclusions, and a later workbook does not replace an earlier source.
 
 Global paths are resolved from the preference file's directory and its optional
 `paths.root`. Profile paths inherit that global root unless they specify their
@@ -132,7 +171,8 @@ Later scalar values take precedence:
 6. Ordinary Markdown content variables, applied to the email section.
 7. Explicit command options, such as `--send-mail yes` or `--send-mail no`.
 
-Mappings merge recursively. Lists in a profile replace global lists. Campaign
+Mappings merge recursively. Apart from the additive `not_to` exclusions, lists
+in a profile replace global lists. Campaign
 lists replace common lists, including when a campaign list is empty. The existing
 concatenation rule remains in effect between campaign includes, the main file,
 and its local override. Repeated `var(conf/to/list)` declarations still append

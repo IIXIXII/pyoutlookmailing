@@ -60,6 +60,11 @@ be combined with an explicit `preferences` or `profile`.
 Preference storage failures raise `upref.UprefError`; invalid common settings or
 unknown profiles raise `ValueError`. See [common preferences](PREFERENCES.md).
 
+The returned configuration includes any inherited `really_send` and
+`to.individual_email` defaults. Explicit campaign values override those defaults;
+`compute_conf` applies explicit `--send-mail` options afterwards. Shared delivery
+addresses remain disallowed; empty `cc`/`bcc` defaults do not add recipients.
+
 ### `default_conf() -> Configuration`
 
 Return a fresh configuration loaded from the packaged `default.conf`. It contains
@@ -119,6 +124,8 @@ creates one item per To address and repeats Cc/Bcc on each item. Missing files
 raise `FileNotFoundError`; invalid delivery fields raise `ValueError`.
 Unavailable COM support raises `RuntimeError`, and Outlook errors propagate.
 Messages already saved or sent are not rolled back if a later item fails.
+Unloaded Excel blacklist settings raise `ValueError`: call `compute_conf` first.
+Delivery logs include recipient addresses and the addresses removed by `not_to`.
 
 To create drafts explicitly, the delivery call is:
 
@@ -257,6 +264,23 @@ delivery and returns the original configuration unchanged. Tests can inject a
 factory receiving a configuration copy and returning an Outlook-compatible fake
 with recipient, subject, HTML, attachment, `Save`, and `Send` members. Importing
 the module alone does not start Outlook.
+
+For `cid:` image references, delivery resolves and deduplicates local files
+before creating any message. It then generates unique ASCII Content-IDs per
+message, rewrites the matching HTML references, and sets the attachment's
+Content-ID, MIME type, rendered-in-body flag, and hidden flag. Image references
+and metadata are in place before assigning `HTMLBody`. The input configuration
+and preview HTML keep their original filename-based references. Tests verify
+the matching IDs through MIME serialization without accessing a real Outlook
+session; received-message rendering still depends on Outlook's MIME export and
+the recipient's client.
+
+Rendered-in-body and hidden flags are optional refinements. If Outlook rejects
+one with `E_ACCESSDENIED`/`MAPI_E_NO_ACCESS` or `MAPI_E_NO_SUPPORT`, delivery logs
+the property and filename and skips that flag for the remaining messages in
+that call. The nested COM `excepinfo` SCODE is inspected when present. A later
+delivery call retries capability detection. Required Content-ID/MIME failures
+and unrelated exceptions still propagate, without retrying a message's send.
 
 `pyoutlookmailing.cli.get_parser_for_command_line()` builds the argument parser.
 `pyoutlookmailing.cli.main(argv=None)` accepts arguments without the executable

@@ -1,0 +1,99 @@
+{#----------------------------------------------------------------------------+
+| Copyright (C) Florent TOURNOIS - All Rights Reserved                         |
++--------------------------------------------------------------------------- #}
+{#
+  Configurable registration/link button. Use on its own Markdown paragraph:
+    [<!-- link-model=button2 --><!-- color=#11458C -->Register](https://example.org)
+
+  Colors: color (or buttoncolor), buttontextcolor, bordercolor.
+  Size in pixels: button_width, button_height, padding_x, padding_y, radius,
+                  border_width, font_size, line_height, letter_spacing, mt, mb.
+  Typography: font_family, font_weight, text_decoration.
+  Layout: align=center|left|right, border_style=solid|dashed|dotted|none.
+  Link: label, title, target, aria_label; otherwise use the Markdown link.
+
+  Explicit height overrides vertical padding. Zero border/radius/spacing is valid.
+  The automatic width is an estimate for a short, single-line label. Set
+  button_width explicitly for long labels or a custom font.
+  Use one HTML anchor for every client. Do not replace it with a VML shape:
+  Outlook can flatten those shapes into images when sending a message.
+  Keep text line height independent from button height. Symmetric table-cell
+  padding supplies the spacing; neither large text leading nor link borders
+  are needed for vertical alignment. Cell padding remains decorative spacing.
+#}
+{%- if link is defined and link.url -%}
+  {%- set _label = label if label is defined else (link.name | default(link.title | default('Register', true), true)) -%}
+  {%- set _plain_label = _label | striptags | trim -%}
+  {%- if not _plain_label -%}
+    {%- set _label = 'Register' -%}
+    {%- set _plain_label = 'Register' -%}
+  {%- endif -%}
+  {%- set _background = color if color is defined and color else (buttoncolor | default('#11458C', true)) -%}
+  {%- set _foreground = buttontextcolor | default('#FFFFFF', true) -%}
+  {%- set _border_color = bordercolor | default(_background, true) -%}
+  {%- set _border_style = border_style | default('solid', true) -%}
+  {%- if _border_style not in ['solid', 'dashed', 'dotted', 'none'] -%}
+    {%- set _border_style = 'solid' -%}
+  {%- endif -%}
+  {%- set _border = [border_width | default(1) | int(1), 0] | max -%}
+  {%- if _border_style == 'none' -%}{%- set _border = 0 -%}{%- endif -%}
+  {%- set _font = font_family | default('Arial,Helvetica,sans-serif', true) -%}
+  {%- set _font_size = [font_size | default(16) | int(16), 1] | max -%}
+  {%- set _font_weight = font_weight | default(700) -%}
+  {%- set _line_height = [line_height | default(_font_size + 6) | int(_font_size + 6), _font_size] | max -%}
+  {%- set _letter_spacing = letter_spacing | default(0.2) | float(0.2) -%}
+  {%- set _decoration = text_decoration | default('none', true) -%}
+  {%- if _decoration not in ['none', 'underline'] -%}{%- set _decoration = 'none' -%}{%- endif -%}
+  {%- set _px = [padding_x | default(28) | int(28), 0] | max -%}
+  {%- set _py = [padding_y | default(14) | int(14), 0] | max -%}
+  {%- set _auto_width = ((_plain_label | length) * _font_size * 0.62 + 2 * (_px + _border)) | round(0, 'ceil') | int -%}
+  {%- set _auto_width = [[_auto_width, 140] | max, 560] | min -%}
+  {%- set _width = [button_width | default(_auto_width) | int(_auto_width), 2 * (_px + _border) + _font_size] | max -%}
+  {%- set _auto_height = _line_height + 2 * (_py + _border) -%}
+  {%- set _height = [button_height | default(_auto_height) | int(_auto_height), _line_height + 2 * _border] | max -%}
+  {%- set _py = (_height - _line_height - 2 * _border) / 2 -%}
+  {%- set _radius = [[radius | default(6) | float(6), 0] | max, ([_width, _height] | min) / 2] | min -%}
+  {%- set _inner_width = _width - 2 * _border -%}
+  {%- set _text_width = _inner_width - 2 * _px -%}
+  {%- set _align = align | default('center', true) -%}
+  {%- if _align not in ['center', 'left', 'right'] -%}{%- set _align = 'center' -%}{%- endif -%}
+  {%- set _mt = [mt | default(16) | int(16), 0] | max -%}
+  {%- set _mb = [mb | default(16) | int(16), 0] | max -%}
+  {%- set _target = target | default(link.target | default('_blank', true), true) -%}
+  {%- set _title = title | default(link.title | default('', true), true) -%}
+  {%- set _aria = aria_label | default(_plain_label, true) -%}
+<table class="button2" role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0"
+       style="width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;">
+  <tr>
+    <td align="{{ _align }}" style="padding:{{ _mt }}px 0 {{ _mb }}px 0;text-align:{{ _align }};">
+      <table class="button2-frame" role="presentation" align="{{ _align }}" width="{{ _width }}" border="0" cellpadding="0" cellspacing="0"
+             style="width:{{ _width }}px;max-width:100%;border-collapse:separate;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;">
+        <tr>
+          <td class="button2-cell" align="center" valign="middle" width="{{ _text_width }}" height="{{ _line_height }}" bgcolor="{{ _background }}"
+              style="width:{{ _text_width }}px;height:{{ _line_height }}px;padding:{{ _py }}px {{ _px }}px;
+                     border:{{ _border }}px {{ _border_style }} {{ _border_color }};border-radius:{{ _radius }}px;
+                     background-color:{{ _background }};text-align:center;vertical-align:middle;
+                     font-family:{{ _font }};font-size:{{ _font_size }}px;font-weight:{{ _font_weight }};
+                     line-height:{{ _line_height }}px;mso-line-height-rule:exactly;">
+            <p class="button2-label" style="margin:0;padding:0;mso-margin-top-alt:0;mso-margin-bottom-alt:0;
+                                          font-family:{{ _font }};font-size:{{ _font_size }}px;font-weight:{{ _font_weight }};
+                                          line-height:{{ _line_height }}px;mso-line-height-rule:exactly;text-align:center;">
+            <a class="button2-link" role="button" href="{{ link.url }}" target="{{ _target }}" rel="noopener noreferrer"
+               {% if _title %}title="{{ _title }}"{% endif %} aria-label="{{ _aria }}"
+               style="display:block;width:100%;margin:0;padding:0;border:0;background-color:{{ _background }};
+                      color:{{ _foreground }} !important;-webkit-text-fill-color:{{ _foreground }} !important;
+                      font-family:{{ _font }};font-size:{{ _font_size }}px;font-weight:{{ _font_weight }};
+                      line-height:{{ _line_height }}px;mso-line-height-rule:exactly;letter-spacing:{{ _letter_spacing }}px;
+                      text-align:center;text-decoration:{{ _decoration }} !important;">
+              <span style="font-family:{{ _font }};font-size:{{ _font_size }}px;font-weight:{{ _font_weight }};
+                           line-height:{{ _line_height }}px;mso-line-height-rule:exactly;
+                           color:{{ _foreground }} !important;-webkit-text-fill-color:{{ _foreground }} !important;text-decoration:{{ _decoration }} !important;">{{ _label }}</span>
+            </a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+{%- endif -%}

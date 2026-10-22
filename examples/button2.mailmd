@@ -1,0 +1,45 @@
+<!-- var(conf/really_send) = false -->
+<!-- var(conf/to/list) = "recipient@example.org" -->
+<!-- var(conf/paths/root) = ".." -->
+<!-- var(conf/paths/jinja) = "template/jinja" -->
+<!-- var(subject) = "Configurable registration buttons" -->
+<!-- var(summary) = "Three variations of the button2 component" -->
+
+## Register for the event
+
+The default button is centered, with automatic dimensions:
+
+[<!-- link-model=button2 -->Register](https://example.org/register "Open registration")
+
+## View the agenda
+
+An outline button with a wider label and rounded corners:
+
+[<!-- link-model=button2 -->
+    <!-- color=#FFFFFF -->
+    <!-- buttontextcolor=#11458C -->
+    <!-- bordercolor=#11458C -->
+    <!-- border_width=2 -->
+    <!-- radius=12 -->
+    <!-- button_width=300 -->
+    <!-- button_height=60 -->
+    <!-- font_size=18 -->
+    <!-- align=center -->
+    View the full agenda](https://example.org/agenda "Programme and speakers")
+
+## Contact the team
+
+A smaller, left-aligned button with square corners:
+
+[<!-- link-model=button2 -->
+    <!-- color=#176B45 -->
+    <!-- radius=0 -->
+    <!-- border_width=0 -->
+    <!-- button_width=240 -->
+    <!-- button_height=44 -->
+    <!-- font_size=14 -->
+    <!-- align=left -->
+    <!-- mt=8 -->
+    <!-- mb=24 -->
+    <!-- target=_self -->
+    Contact us](mailto:contact@example.org "Ask about registration")

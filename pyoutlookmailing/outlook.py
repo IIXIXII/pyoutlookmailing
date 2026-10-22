@@ -12,12 +12,54 @@ import logging
 import re
 from copy import deepcopy
 from html import unescape
+from mimetypes import guess_type
 from urllib.parse import unquote
+from uuid import uuid4
 
 from .files import find_file
 
 logger = logging.getLogger(__name__)
 CID_PATTERN = re.compile(r"""\bsrc\s*=\s*['"]cid:([^'"]+)['"]""", re.IGNORECASE)
+ATTACH_CONTENT_ID = "http://schemas.microsoft.com/mapi/proptag/0x3712001F"
+ATTACH_MIME_TAG = "http://schemas.microsoft.com/mapi/proptag/0x370E001F"
+ATTACH_FLAGS = "http://schemas.microsoft.com/mapi/proptag/0x37140003"
+ATTACHMENT_HIDDEN = "http://schemas.microsoft.com/mapi/proptag/0x7FFE000B"
+ATTACH_RENDERED_IN_BODY = 0x00000004
+
+
+# -----------------------------------------------------------------------------
+def _set_optional_inline_property(
+    properties, schema, value, filename, unsupported
+):
+    """Skip only provider-denied or unsupported optional attachment metadata.
+
+    Inspect the nested Outlook SCODE when present: the outer COM HRESULT often
+    reports only DISP_E_EXCEPTION. Keep pywin32 optional for non-Windows tests.
+    Recheck capabilities on the next delivery call, not for every recipient.
+    """
+    if schema in unsupported:
+        return
+    try:
+        properties.SetProperty(schema, value)
+    except Exception as exc:
+        code = getattr(exc, "hresult", None)
+        details = getattr(exc, "excepinfo", None)
+        if isinstance(details, (tuple, list)) and len(details) > 5:
+            if isinstance(details[5], int) and details[5]:
+                code = details[5]
+        # E_ACCESSDENIED / MAPI_E_NO_ACCESS and MAPI_E_NO_SUPPORT.
+        if not isinstance(code, int) or code & 0xFFFFFFFF not in {
+            0x80070005,
+            0x80040102,
+        }:
+            raise
+        unsupported.add(schema)
+        logger.warning(
+            "Outlook : propriété facultative %s non modifiable pour %s ; "
+            "références Content-ID conservées",
+            schema.rsplit("/", 1)[-1],
+            filename.name,
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -86,10 +128,16 @@ def deliver(conf, *, mail_factory=new_email):
         FileNotFoundError: A regular attachment or referenced CID image is
             missing.
 
-    All addresses are normalized and exclusions apply to To, Cc, and Bcc. Files
+    All addresses are normalized and exclusions apply to To, Cc, and Bcc. Excel
+    blacklists must already be loaded by compute_conf. Logs identify removed
+    addresses and the recipients of each successfully sent or saved item. Files
     are resolved before the first factory call. CID names are deduplicated per
     item. Each item is processed sequentially; factory and COM errors propagate
-    without retry or rollback of messages already saved or sent.
+    without retry or rollback of messages already saved or sent. Local CID
+    filenames are replaced with globally unique ASCII Content-IDs per message.
+    Inline attachments receive MIME type and rendered-in-body metadata when
+    writable. Provider-denied optional flags are logged without blocking the
+    required Content-ID/MIME properties; unrelated errors still propagate.
     """
     from .core import _addresses
 
@@ -99,24 +147,47 @@ def deliver(conf, *, mail_factory=new_email):
         raise ValueError(
             "really_send doit être un booléen YAML (true ou false)"
         )
-    exclusion = prepared.get("not_to") or {}
+    exclusion = prepared.get("not_to")
+    if exclusion is None:
+        exclusion = {}
     if not isinstance(exclusion, dict):
         raise ValueError("not_to doit être un objet YAML")
+    if any(
+        key in exclusion
+        for key in ("excel_file", "excel_column_name", "_excel_sources")
+    ):
+        raise ValueError(
+            "not_to : blacklist Excel non chargée ; "
+            "appelez compute_conf avant l'envoi"
+        )
     excluded = set(_addresses(exclusion.get("list"), "not_to"))
     recipients = {}
+    removed = {}
     for field in ("to", "cc", "bcc"):
-        section = prepared.get(
-            field, prepared.get("Bcc", {}) if field == "bcc" else {}
-        )
+        section = prepared.get(field)
+        if field == "bcc" and section is None:
+            section = prepared.get("Bcc")
         if section is None:
             section = {}
         if not isinstance(section, dict):
             raise ValueError(f"{field} doit être un objet YAML")
-        recipients[field] = [
-            address
-            for address in _addresses(section.get("list"), field)
-            if address not in excluded
+        addresses = _addresses(section.get("list"), field)
+        removed[field] = [
+            address for address in addresses if address in excluded
         ]
+        recipients[field] = [
+            address for address in addresses if address not in excluded
+        ]
+    logger.info(
+        "Blacklist not_to : %d adresses ; exclusions To=%d, Cc=%d, Cci=%d",
+        len(excluded),
+        len(removed["to"]),
+        len(removed["cc"]),
+        len(removed["bcc"]),
+    )
+    for field, addresses in removed.items():
+        for address in addresses:
+            logger.info("Exclu (not_to) : %s [%s]", address, field)
     if not any(recipients.values()):
         raise ValueError("Aucun destinataire après application des exclusions")
     individual = (prepared.get("to") or {}).get("individual_email", False)
@@ -153,28 +224,66 @@ def deliver(conf, *, mail_factory=new_email):
         if individual
         else [recipients["to"]]
     )
+    unsupported_inline_properties: set[str] = set()
     for index, group in enumerate(groups, start=1):
+        content_ids = {
+            filename: f"image-{uuid4().hex}@pyoutlookmailing.invalid"
+            for filename in dict.fromkeys(cid.values())
+        }
+
+        # ---------------------------------------------------------------------
+        def replace_cid(match, content_ids=content_ids):
+            """Replace only the CID value, preserving the authored attribute."""
+            start = match.start(1) - match.start()
+            end = match.end(1) - match.start()
+            content_id = content_ids[cid[match.group(1)]]
+            return match.group()[:start] + content_id + match.group()[end:]
+
+        html_body = CID_PATTERN.sub(replace_cid, email["html_body"])
         mail = mail_factory(prepared)
         mail.To = "; ".join(group)
         mail.Cc = "; ".join(recipients["cc"])
         mail.Bcc = "; ".join(recipients["bcc"])
         mail.Subject = email["subject"]
-        mail.HTMLBody = email["html_body"]
-        for name, filename in cid.items():
+        for filename, content_id in content_ids.items():
             attached = mail.Attachments.Add(str(filename), 1, 0)
-            attached.PropertyAccessor.SetProperty(
-                "http://schemas.microsoft.com/mapi/proptag/0x3712001F", name
+            properties = attached.PropertyAccessor
+            properties.SetProperty(ATTACH_CONTENT_ID, content_id)
+            properties.SetProperty(
+                ATTACH_MIME_TAG,
+                guess_type(str(filename))[0] or "application/octet-stream",
+            )
+            _set_optional_inline_property(
+                properties,
+                ATTACH_FLAGS,
+                ATTACH_RENDERED_IN_BODY,
+                filename,
+                unsupported_inline_properties,
+            )
+            _set_optional_inline_property(
+                properties,
+                ATTACHMENT_HIDDEN,
+                True,
+                filename,
+                unsupported_inline_properties,
             )
         for filename in attachments:
             mail.Attachments.Add(str(filename))
+        # Resolve inline attachments before Outlook processes their HTML refs.
+        mail.HTMLBody = html_body
         if send:
             mail.Send()
         else:
             mail.Save()
+        destinations = ["; ".join(group)] if group else []
+        for field, label in (("cc", "Cc"), ("bcc", "Cci")):
+            if recipients[field]:
+                destinations.append(f"{label} : {'; '.join(recipients[field])}")
         logger.info(
-            "Message %d/%d : %s",
+            "Message %d/%d : %s %s",
             index,
             len(groups),
             "envoyé" if send else "brouillon enregistré",
+            " | ".join(destinations),
         )
     return conf

@@ -7,6 +7,7 @@
 """Exercise common preferences, campaign priorities and explicit persistence."""
 
 import json
+import logging
 import os
 import subprocess
 import sys
@@ -79,6 +80,77 @@ def test_common_sender_template_and_paths_render_from_any_directory(
     assert prepared["paths"]["template"] == str(resources)
     assert prepared["paths"]["conf_filename"] == str(campaign)
     assert store.path.read_bytes() == original
+
+
+# -----------------------------------------------------------------------------
+def test_upref_nested_defaults_and_campaign_override_are_used_for_rendering(
+    tmp_path, campaign, store
+):
+    templates = tmp_path / "templates"
+    templates.mkdir()
+    (templates / "common.html").write_text(
+        "<header>{{ branding }}</header><main>{{ content }}</main>"
+        "<footer>{{ footer }}</footer>",
+        encoding="utf-8",
+    )
+    store.save(
+        {
+            "paths": {"template": "templates"},
+            "email": {
+                "template": "common.html",
+                "branding": "Common branding",
+                "footer": "Common footer",
+            },
+        }
+    )
+    campaign.write_text(
+        '<!-- var(conf/email/footer) = "Campaign footer" -->\n'
+        + campaign.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    first = core.compute_conf(core.load_conf(campaign))
+    assert "<header>Common branding</header>" in first["email"]["html_body"]
+    assert "<footer>Campaign footer</footer>" in first["email"]["html_body"]
+    store.update({"email": {"branding": "Updated branding"}})
+    second = core.compute_conf(core.load_conf(campaign))
+    assert "<header>Updated branding</header>" in second["email"]["html_body"]
+    assert "<footer>Campaign footer</footer>" in second["email"]["html_body"]
+
+
+# -----------------------------------------------------------------------------
+@pytest.mark.parametrize(
+    "state", ["missing", "empty", "profiles_only", "valid", "invalid"]
+)
+def test_cli_logs_preference_location_before_loading(
+    state, campaign, store, tmp_path, caplog
+):
+    if state == "empty":
+        store.save({})
+    elif state == "profiles_only":
+        store.save({"profiles": {"unused": {}}})
+    elif state == "valid":
+        store.save({"email": {"footer": "Shared footer"}})
+    elif state == "invalid":
+        store.path.write_text("email: [", encoding="utf-8")
+    with caplog.at_level(logging.INFO):
+        result = cli.main(
+            ["--conf", str(campaign), "--preview", str(tmp_path / "out.html")]
+        )
+    assert result == (1 if state == "invalid" else 0)
+    messages = [record.getMessage() for record in caplog.records]
+    location = f"Fichier upref (valeurs par défaut) : {store.path}"
+    assert messages.count(location) == 1
+    if state == "invalid":
+        assert messages.index(location) < next(
+            i
+            for i, record in enumerate(caplog.records)
+            if record.levelno >= logging.ERROR
+        )
+    if state in {"missing", "empty"}:
+        status = "absent" if state == "missing" else "vide"
+        assert any(f"Fichier upref {status}" in message for message in messages)
+    if state == "missing":
+        assert not store.exists()
 
 
 # -----------------------------------------------------------------------------
@@ -232,9 +304,20 @@ def test_invalid_profile_is_actionable(campaign, store, selection):
 @pytest.mark.parametrize(
     "data",
     [
-        {"really_send": True},
+        {"really_send": "true"},
+        {"really_send": 1},
+        {"really_send": None},
         {"to": {"list": ["common@example.org"]}},
-        {"not_to": {"list": []}},
+        {"to": False},
+        {"to": {"individual_email": "true"}},
+        {"cc": {"list": ["copy@example.org"]}},
+        {"bcc": {"list": ["hidden@example.org"]}},
+        {"cc": []},
+        {"not_to": {"list": "blocked@example.org"}},
+        {"not_to": {"list": [False]}},
+        {"not_to": {"excel_file": ""}},
+        {"not_to": {"excel_column_name": []}},
+        {"not_to": {"unexpected": True}},
         {"email": {"subject": "Common"}},
         {"email": {"attachments": []}},
         {"email": {"content": {"txt": "Body"}}},
@@ -247,7 +330,7 @@ def test_invalid_profile_is_actionable(campaign, store, selection):
         {"email": []},
         {"email": {"template": False}},
         {"profiles": []},
-        {"profiles": {"ebw": {"really_send": True}}},
+        {"profiles": {"ebw": {"really_send": "true"}}},
         {"profiles": {" ": {}}},
         {"profiles": {"ebw": []}},
     ],
@@ -271,13 +354,18 @@ def test_invalid_preference_yaml_is_not_silently_ignored(campaign, store, text):
 
 
 # -----------------------------------------------------------------------------
-def test_explicit_store_overrides_environment(tmp_path, campaign, store):
+def test_explicit_store_overrides_environment(
+    tmp_path, campaign, store, caplog
+):
     store.save({"from": "environment@example.org"})
     explicit = tmp_path / "explicit.yaml"
     explicit.write_text("from: explicit@example.org", encoding="utf-8")
-    assert core.load_conf(campaign, preferences=explicit)["from"] == (
-        "explicit@example.org"
-    )
+    with caplog.at_level(logging.INFO):
+        assert core.load_conf(campaign, preferences=explicit)["from"] == (
+            "explicit@example.org"
+        )
+    assert str(explicit) in caplog.text
+    assert str(store.path) not in caplog.text
 
 
 # -----------------------------------------------------------------------------
@@ -369,7 +457,7 @@ def test_invalid_import_keeps_existing_preferences(tmp_path, store):
     store.save({"from": "original@example.org"})
     original = store.path.read_bytes()
     source = tmp_path / "bad.yaml"
-    source.write_text("really_send: true", encoding="utf-8")
+    source.write_text('really_send: "true"', encoding="utf-8")
     assert preferences.main(["--import", str(source), "--replace"]) == 1
     assert store.path.read_bytes() == original
     assert preferences.main(["--import", str(tmp_path / "missing.yaml")]) == 1
@@ -381,6 +469,145 @@ def test_replacement_requires_import():
     with pytest.raises(SystemExit) as error:
         preferences.main(["--replace"])
     assert error.value.code == 2
+
+
+# -----------------------------------------------------------------------------
+@pytest.mark.parametrize("configured_send", [None, False, True])
+@pytest.mark.parametrize("mode", [None, "conf", "no", "yes"])
+def test_approved_upref_delivery_defaults_and_send_overrides(
+    campaign, store, monkeypatch, configured_send, mode
+):
+    store.save(
+        {
+            "really_send": True,
+            "to": {"individual_email": True},
+            "cc": None,
+            "bcc": None,
+            "not_to": {"list": ["blocked@example.org"]},
+        }
+    )
+    declaration = (
+        ""
+        if configured_send is None
+        else (
+            f"<!-- var(conf/really_send) = {str(configured_send).lower()} -->\n"
+        )
+    )
+    campaign.write_text(
+        declaration
+        + '<!-- var(conf/to/list) = "second@example.org" -->\n'
+        + '<!-- var(conf/to/list) = "blocked@example.org" -->\n'
+        + campaign.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    mails = [Mock(), Mock()]
+    factory = Mock(side_effect=mails)
+    monkeypatch.setattr(core, "new_email", factory)
+    arguments = ["--conf", str(campaign)]
+    if mode is not None:
+        arguments.extend(["--send-mail", mode])
+    assert cli.main(arguments) == 0
+    assert factory.call_count == 2
+    assert [mail.To for mail in mails] == [
+        "second@example.org",
+        "recipient@example.org",
+    ]
+    should_send = mode == "yes" or (
+        mode in (None, "conf") and configured_send is not False
+    )
+    for mail in mails:
+        assert mail.Cc == mail.Bcc == ""
+        assert mail.Send.call_count == int(should_send)
+        assert mail.Save.call_count == int(not should_send)
+
+
+# -----------------------------------------------------------------------------
+def test_campaign_can_disable_global_individual_delivery(
+    campaign, store, monkeypatch
+):
+    store.save({"really_send": True, "to": {"individual_email": True}})
+    campaign.write_text(
+        "<!-- var(conf/to/individual_email) = false -->\n"
+        '<!-- var(conf/to/list) = "second@example.org" -->\n'
+        + campaign.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    factory = Mock()
+    monkeypatch.setattr(core, "new_email", factory)
+    assert cli.main(["--conf", str(campaign)]) == 0
+    factory.assert_called_once()
+    assert (
+        factory.return_value.To == "second@example.org; recipient@example.org"
+    )
+    factory.return_value.Send.assert_called_once()
+
+
+# -----------------------------------------------------------------------------
+def test_profile_campaign_and_local_delivery_values_override_common_defaults(
+    campaign, store
+):
+    store.save(
+        {
+            "really_send": True,
+            "to": {"individual_email": True},
+            "profiles": {
+                "draft": {
+                    "really_send": False,
+                    "to": {"individual_email": False},
+                }
+            },
+        }
+    )
+    campaign.write_text(
+        '<!-- var(conf/profile) = "draft" -->\n'
+        + campaign.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    profile_conf = core.compute_conf(core.load_conf(campaign))
+    assert profile_conf["really_send"] is False
+    assert profile_conf["to"]["individual_email"] is False
+    campaign.write_text(
+        "<!-- var(conf/really_send) = true -->\n"
+        "<!-- var(conf/to/individual_email) = true -->\n"
+        + campaign.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    campaign_conf = core.compute_conf(core.load_conf(campaign))
+    assert campaign_conf["really_send"] is True
+    assert campaign_conf["to"]["individual_email"] is True
+    campaign.with_suffix(".local.conf").write_text(
+        "really_send: false\nto:\n  individual_email: false\n", encoding="utf-8"
+    )
+    local_conf = core.compute_conf(core.load_conf(campaign))
+    assert local_conf["really_send"] is False
+    assert local_conf["to"]["individual_email"] is False
+
+
+# -----------------------------------------------------------------------------
+def test_no_preferences_ignores_global_send_and_individual_defaults(
+    campaign, store, monkeypatch
+):
+    store.save({"really_send": True, "to": {"individual_email": True}})
+    factory = Mock()
+    monkeypatch.setattr(core, "new_email", factory)
+    assert cli.main(["--conf", str(campaign), "--no-preferences"]) == 0
+    factory.return_value.Save.assert_called_once()
+    factory.return_value.Send.assert_not_called()
+
+
+# -----------------------------------------------------------------------------
+def test_preview_uses_global_send_default_without_delivering(
+    campaign, store, tmp_path, monkeypatch
+):
+    store.save({"really_send": True, "to": {"individual_email": True}})
+    delivery = Mock(side_effect=AssertionError("Preview must not deliver"))
+    monkeypatch.setattr(cli, "send_email", delivery)
+    destination = tmp_path / "preview.html"
+    assert (
+        cli.main(["--conf", str(campaign), "--preview", str(destination)]) == 0
+    )
+    delivery.assert_not_called()
+    assert destination.exists()
 
 
 # -----------------------------------------------------------------------------
@@ -427,22 +654,27 @@ def test_python_api_rejects_preferences_when_disabled(campaign, store):
 
 
 # -----------------------------------------------------------------------------
-def test_cli_no_preferences_bypasses_invalid_file(campaign, store, tmp_path):
+def test_cli_no_preferences_bypasses_invalid_file(
+    campaign, store, tmp_path, caplog
+):
     store.path.write_text("invalid: [", encoding="utf-8")
     output = tmp_path / "preview.html"
-    assert (
-        cli.main(
-            [
-                "--conf",
-                str(campaign),
-                "--no-preferences",
-                "--preview",
-                str(output),
-            ]
+    with caplog.at_level(logging.INFO):
+        assert (
+            cli.main(
+                [
+                    "--conf",
+                    str(campaign),
+                    "--no-preferences",
+                    "--preview",
+                    str(output),
+                ]
+            )
+            == 0
         )
-        == 0
-    )
     assert "<strong>à tous</strong>" in output.read_text(encoding="utf-8")
+    assert "Préférences upref désactivées" in caplog.text
+    assert "Fichier upref" not in caplog.text
 
 
 # -----------------------------------------------------------------------------
@@ -491,5 +723,6 @@ def test_isolated_cli_uses_preferences_for_preview_from_another_directory(
         check=True,
         timeout=20,
     )
-    assert "Préférences communes" in result.stderr
+    assert "Fichier upref (valeurs par défaut)" in result.stderr
+    assert str(store.path) in result.stderr
     assert "<strong>à tous</strong>" in output.read_text(encoding="utf-8")

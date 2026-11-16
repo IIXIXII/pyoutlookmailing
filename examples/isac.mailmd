@@ -1,0 +1,54 @@
+<!-- var(conf/really_send) = false -->
+<!-- var(conf/profile) = "isac" -->
+<!-- var(conf/to/list) = "recipient@example.org" -->
+<!-- var(conf/paths/root) = ".." -->
+<!-- var(conf/paths/jinja) = "template/jinja" -->
+<!-- var(conf/paths/template) = "template/html" -->
+<!-- var(conf/paths/img) = "template/img" -->
+<!-- var(conf/paths/base_search) = "examples" -->
+<!-- var(conf/paths/base_search) = "." -->
+<!-- var(conf/paths/base_search) = "mails" -->
+<!-- var(model) = "isac" -->
+<!-- var(template) = "isac.html" -->
+<!-- var(lang) = "en" -->
+<!-- var(subject) = "Introducing ISAC 4 Identity & Trust Services" -->
+<!-- var(summary) = "A trusted community for sharing threats, incidents and good practices in digital identity." -->
+<!-- var(brand) = "ISAC 4 Identity & Trust Services" -->
+<!-- var(eyebrow) = "Information Sharing & Analysis Centre" -->
+<!-- var(contact_email) = "contact@isac4id.eu" -->
+<!-- var(website_url) = "https://isac4id.eu" -->
+<!-- var(website_label) = "isac4id.eu" -->
+<!-- var(author) = "Florent Tournois" -->
+<!-- var(signoff) = "Yours sincerely," -->
+
+Dear colleagues,
+
+I am pleased to introduce **ISAC 4 Identity & Trust Services**, an initiative we are currently launching, and in which we would be honoured to involve your organisation.
+
+## 1 · Context
+
+With the deployment of the European Digital Identity Wallets, issuers, wallet providers and relying parties will face common threats, including document fraud, identity theft and attacks targeting wallets and credentials. At present, these issues are largely addressed by each organisation in isolation. We are convinced that the resilience of the ecosystem depends on the structured sharing of information among its stakeholders.
+
+## 2 · Purpose
+
+ISAC 4 Identity & Trust Services is an Information Sharing and Analysis Centre (ISAC) dedicated to digital identity and trust services. It aims to bring together public and private stakeholders in order to:
+
+- share incidents, early warning signs and observed fraud patterns;
+- jointly analyse threats and issue alerts and recommendations;
+- develop common good practices.
+
+The initiative was officially presented at the EUDI Wallets Launchpad in October 2026.
+
+## 3 · Intended membership
+
+The initiative is open to public administrations and Member States, credential issuers, wallet providers, relying parties (banks, insurers, operators, etc.), software vendors and integrators, CERTs and cybersecurity organisations, and academia.
+
+## 4 · Benefits for members
+
+| <!-- layout=cards --> Threat intelligence | Trusted network | Collective voice |
+| --- | --- | --- |
+| Information that no single organisation can gather on its own. | A peer community governed by clear confidentiality rules. | Weight in European decisions on identity and trust services. |
+
+## 5 · Get involved
+
+Interest is growing quickly as the founding circle of members takes shape. Don’t miss the chance to be part of this core group: reach out to schedule a quick briefing, or connect us directly with the best point of contact in your organisation.

@@ -530,7 +530,8 @@ def test_string_send_flag_rejected(conf):
 def test_exact_sender_account(monkeypatch):
     import win32com.client
 
-    account = SimpleNamespace(SmtpAddress="me@example.org")
+    store = Mock()
+    account = SimpleNamespace(SmtpAddress="me@example.org", DeliveryStore=store)
     application = Mock()
     application.Session.Accounts = [account]
     monkeypatch.setattr(
@@ -538,6 +539,7 @@ def test_exact_sender_account(monkeypatch):
     )
     mail = outlook.new_email({"from": "ME@example.org"})
     assert mail.SendUsingAccount is account
+    assert mail is store.GetDefaultFolder.return_value.Items.Add.return_value
     application.CreateItem.reset_mock()
     with pytest.raises(ValueError, match="expéditeur"):
         outlook.new_email({"from": "me"})

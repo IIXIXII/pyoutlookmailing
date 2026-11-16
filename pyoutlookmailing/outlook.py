@@ -25,6 +25,8 @@ ATTACH_MIME_TAG = "http://schemas.microsoft.com/mapi/proptag/0x370E001F"
 ATTACH_FLAGS = "http://schemas.microsoft.com/mapi/proptag/0x37140003"
 ATTACHMENT_HIDDEN = "http://schemas.microsoft.com/mapi/proptag/0x7FFE000B"
 ATTACH_RENDERED_IN_BODY = 0x00000004
+OL_FOLDER_DRAFTS = 16
+OL_FOLDER_SENT_MAIL = 5
 
 
 # -----------------------------------------------------------------------------
@@ -63,20 +65,65 @@ def _set_optional_inline_property(
 
 
 # -----------------------------------------------------------------------------
+def _select_account(application, sender):
+    """Select an explicit sender, an active folder account, or a sole account.
+
+    Never interpret an unrelated archive store as a sending account. Ambiguous
+    sessions require an explicit from address rather than guessing an account.
+    """
+    accounts = list(application.Session.Accounts)
+    if sender:
+        matches = [
+            account
+            for account in accounts
+            if str(account.SmtpAddress).strip().casefold()
+            == sender.strip().casefold()
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                "Le compte expéditeur demandé est introuvable ou ambigu "
+                "dans Outlook"
+            )
+        return matches[0]
+    explorer = application.ActiveExplorer()
+    if explorer is not None and explorer.CurrentFolder is not None:
+        store_id = explorer.CurrentFolder.Store.StoreID
+        matches = [
+            account
+            for account in accounts
+            if account.DeliveryStore is not None
+            and account.DeliveryStore.StoreID == store_id
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise ValueError(
+                "Plusieurs comptes Outlook utilisent le dossier actif ; "
+                "renseignez from pour choisir le compte expéditeur"
+            )
+    if len(accounts) == 1:
+        return accounts[0]
+    raise ValueError(
+        "Impossible d'identifier le compte Outlook actif ; "
+        "renseignez from dans la configuration ou les préférences"
+    )
+
+
+# -----------------------------------------------------------------------------
 def new_email(conf):
-    """Create an unsaved Outlook mail item, optionally selecting a sender
-    account.
+    """Create an unsaved message in the selected account's Drafts folder.
 
     Args:
         conf: Configuration whose optional from string is an account email
             address.
 
     Returns:
-        An Outlook COM MailItem with SendUsingAccount set when from is supplied.
+        A MailItem bound to the account and its Sent Items folder.
 
     Raises:
         RuntimeError: win32com cannot be imported.
-        ValueError: No configured account exactly matches from, ignoring case.
+        ValueError: The sender cannot be identified unambiguously or its store
+            does not provide Drafts and Sent Items folders.
 
     Dispatch may start Outlook. The function neither saves nor sends the item.
     COM errors propagate; a requested but missing account never falls back
@@ -89,20 +136,27 @@ def new_email(conf):
             "La livraison nécessite Windows, pywin32 et Outlook classique."
         ) from exc
     outlook = win32com.client.Dispatch("Outlook.Application")
-    account = None
-    if conf.get("from"):
-        sender = conf["from"].strip().casefold()
-        for candidate in outlook.Session.Accounts:
-            if str(candidate.SmtpAddress).casefold() == sender:
-                account = candidate
-                break
-        if account is None:
-            raise ValueError(
-                "Le compte expéditeur demandé est introuvable dans Outlook"
-            )
-    mail = outlook.CreateItem(0)
-    if account is not None:
-        mail.SendUsingAccount = account
+    account = _select_account(outlook, conf.get("from"))
+    store = account.DeliveryStore
+    if store is None:
+        raise ValueError("Le compte Outlook sélectionné n'a pas de stockage")
+    drafts = store.GetDefaultFolder(OL_FOLDER_DRAFTS)
+    sent = store.GetDefaultFolder(OL_FOLDER_SENT_MAIL)
+    if drafts is None or sent is None:
+        raise ValueError(
+            "Les dossiers Brouillons et Éléments envoyés sont introuvables "
+            "pour le compte Outlook sélectionné"
+        )
+    logger.info(
+        "Compte Outlook : %s ; Brouillons : %s ; Éléments envoyés : %s",
+        account.SmtpAddress,
+        drafts.FolderPath,
+        sent.FolderPath,
+    )
+    mail = drafts.Items.Add("IPM.Note")
+    mail.SendUsingAccount = account
+    mail.SaveSentMessageFolder = sent
+    mail.DeleteAfterSubmit = False
     return mail
 
 
@@ -241,6 +295,14 @@ def deliver(conf, *, mail_factory=new_email):
 
         html_body = CID_PATTERN.sub(replace_cid, email["html_body"])
         mail = mail_factory(prepared)
+        # Keep an implicit active account stable for an individual-mail batch.
+        # Injected test factories need not expose Outlook account properties.
+        if not prepared.get("from"):
+            smtp = getattr(
+                getattr(mail, "SendUsingAccount", None), "SmtpAddress", None
+            )
+            if isinstance(smtp, str) and smtp.strip():
+                prepared["from"] = smtp.strip()
         mail.To = "; ".join(group)
         mail.Cc = "; ".join(recipients["cc"])
         mail.Bcc = "; ".join(recipients["bcc"])

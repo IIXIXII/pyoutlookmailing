@@ -1,0 +1,65 @@
+<!-- var(conf/really_send) = false -->
+<!-- var(conf/profile) = "isac" -->
+<!-- var(conf/to/list) = "florent.tournois@gmail.com" -->
+<!-- var(conf/to/list) = "helene.xu@cabinet-louis-reynaud.fr" -->
+<!-- var(conf/to/list) = "jade.pasquier@idakto.com" -->
+<!-- var(conf/to/list) = "emma.dutu@cabinet-louis-reynaud.fr" -->
+<!-- var(conf/to/list) = "stefane.mouille@cabinet-louis-reynaud.fr" -->
+
+<!-- var(subject) = "[ISAC4] Call for founding members – European ISAC for Identity & Trust Services" -->
+<!-- var(summary) = "We are forming the founding community now, with the ISAC planned to run in early 2027. Write to contact@isac4id.eu to arrange a short briefing." -->
+<!-- var(author) = "Florent Tournois" -->
+<!-- var(signoff) = "Kind regards," -->
+
+
+TEST TEST TEST
+
+Dear colleagues,
+
+I am writing to introduce **ISAC4 Identity & Trust Services** (ISAC4ID), a European public–private initiative that I presented at the **EUDI Wallets Launchpad** in Brussels on 29 October 2026. We are now gathering the organisations that would like to help build it, and I would welcome your organisation's interest.
+
+You are receiving this message because we have worked together or been in contact on European digital identity. If it reaches you more than once through different networks, please excuse the duplicate.
+
+### 🧭 Why an ISAC for identity
+
+An Information Sharing and Analysis Centre (ISAC) is a trusted community in which organisations facing the same threats share what they observe, analyse it together and act before an attack spreads. ISACs already exist in European banking and for EUCC certification.
+
+Digital identity needs the same approach. Deepfakes, injection attacks, morphing and document fraud target the whole chain of trust, from issuance to acceptance by relying parties, yet each organisation sees only part of the picture.
+
+### 🔐 From threat intelligence to technical assurance
+
+Take a deepfake injected into a remote onboarding flow. The member that detects it shares its findings with the others under Traffic Light Protocol (TLP) rules. Laboratories then reproduce the attack, document it as a common Attack Method and rate the effort it requires, so that every laboratory and assessment body tests it in the same way.
+
+| <!-- layout=cards --> Shared threat intelligence | Reproducible attack methods | Consistent evaluation |
+| --- | --- | --- |
+| Alerts and analyses of attacks observed by other members, shared under clear confidentiality rules. | Documented tests that laboratories can repeat and compare. | Common criteria to rate attacks and assess countermeasures, feeding certification schemes and standards. |
+
+### 👥 Who can join
+
+The ISAC brings together organisations that issue, use, test and oversee identity and trust services:
+
+- Identity document issuers and digital identity issuers
+- Remote identity providers and (qualified) trust service providers
+- Relying parties
+- Technology providers
+- Testing laboratories and conformity assessment bodies
+- National cybersecurity certification authorities (NCCAs)
+- European and international standards organisations
+
+### 🏛️ How it will work
+
+ISAC4ID is being set up as an international non-profit association under Belgian law (AISBL). A Steering Committee of identity document issuers and NCCAs, on the principle of one nation, one vote, will validate critical deliverables, and four permanent technical groups will carry out the work. The ISAC will be funded by annual membership fees set by category of organisation; identity document issuers, NCCAs and standards organisations will not pay a fee.
+
+### 🎥 Presentation webinar
+
+We will hold a presentation webinar in **early December 2026**, covering how the ISAC will work, who can join, membership conditions and fees. The date and connection details will be sent to those who express their interest.
+
+### 📅 Next steps
+
+We aim to launch operations in **early 2027**. If your organisation would like to take part, please tell us about it through the expression of interest form on our website. This does not commit your organisation to membership.
+
+[<!-- link-model=button2 -->Express your interest](https://isac-4-identity-and-qtsp.eu/contact/ "Open the expression of interest form")
+
+For any question, please write to contact@isac4id.eu. If you are not the right person, please forward this message to the relevant colleague; if you prefer not to receive further messages about ISAC4ID, simply reply to let me know.
+
+We look forward to building this community with you.

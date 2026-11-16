@@ -20,3 +20,17 @@ profiles:
     email:
       template: unfold v2.html
       model: unfold
+  isac:
+    email:
+      template: isac.html
+      model: isac
+      lang: en
+      brand: "ISAC 4 Identity & Trust Services"
+      eyebrow: "Information Sharing & Analysis Centre"
+      author: "Florent Tournois"
+      role: ""
+      signoff: "Yours sincerely,"
+      contact_email: "contact@isac4id.eu"
+      website_url: "https://isac4id.eu"
+      website_label: "isac4id.eu"
+      isac_width: 800

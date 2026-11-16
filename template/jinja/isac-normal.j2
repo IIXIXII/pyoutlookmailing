@@ -1,0 +1,7 @@
+{%- import 'isac-theme.j2' as theme with context -%}
+{%- if text is defined and text -%}
+<p class="isac-paragraph" style="margin:0 0 {{ mb | default(20) | int }}px 0;padding:0;
+    mso-margin-top-alt:0;mso-margin-bottom-alt:{{ mb | default(20) | int }}px;
+    font-family:{{ theme.font }};font-size:16px;line-height:26px;
+    mso-line-height-rule:exactly;color:{{ theme.ink }};text-align:left;word-wrap:break-word;">{{ text }}</p>
+{%- endif -%}

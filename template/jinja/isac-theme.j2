@@ -1,0 +1,11 @@
+{# ISAC palette shared by the outer template and Markdown components. #}
+{%- set navy = isac_navy | default('#16254D', true) -%}
+{%- set accent = isac_accent | default('#3F7FD4', true) -%}
+{%- set link = isac_link | default('#2A68BD', true) -%}
+{%- set ink = isac_text | default('#1A1F2B', true) -%}
+{%- set background = isac_background | default('#F2F4F8', true) -%}
+{%- set panel = isac_panel | default('#F3F7FD', true) -%}
+{%- set muted = '#8FB4EE' -%}
+{%- set rule = '#E1E6EE' -%}
+{%- set font = 'Segoe UI,Arial,Helvetica,sans-serif' -%}
+{%- set width = [[isac_width | default(640) | int(640), 480] | max, 800] | min -%}

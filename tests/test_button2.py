@@ -49,7 +49,7 @@ def outlook_view(html):
 
 
 # -----------------------------------------------------------------------------
-@pytest.mark.parametrize("model", ["default", "fi", "apt", "unfold"])
+@pytest.mark.parametrize("model", ["default", "fi", "apt", "unfold", "isac"])
 def test_registration_button_keeps_a_real_outlook_link_and_following_content(
     model,
 ):
@@ -303,7 +303,7 @@ def test_plain_template_values_are_escaped_and_label_has_a_fallback():
 
 
 # -----------------------------------------------------------------------------
-@pytest.mark.parametrize("model", ["default", "fi", "apt", "unfold"])
+@pytest.mark.parametrize("model", ["default", "fi", "apt", "unfold", "isac"])
 def test_emphasized_registration_link_stays_outside_paragraphs(model):
     html = renderer.create_markdown(environment(), {"model": model})(
         "**[<!-- link-model=button2 -->Register](https://example.org)**"

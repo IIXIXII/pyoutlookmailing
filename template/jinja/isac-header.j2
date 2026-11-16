@@ -1,0 +1,11 @@
+{%- import 'isac-theme.j2' as theme with context -%}
+{%- if begin is defined -%}
+{%- set _level = level if level in [1, 2, 3, 4, 5, 6] else 2 -%}
+<h{{ _level }} class="isac-heading" style="margin:{{ mt | default(24) | int }}px 0 {{ mb | default(14) | int }}px 0;
+    padding:0 0 8px 0;border-bottom:1px solid {{ theme.rule }};
+    font-family:{{ theme.font }};font-size:{{ 24 if _level == 1 else (13 if _level == 2 else 17) }}px;
+    line-height:{{ 32 if _level == 1 else (20 if _level == 2 else 24) }}px;
+    mso-line-height-rule:exactly;font-weight:700;text-align:left;
+    color:{{ theme.link if _level == 2 else theme.navy }};
+    {% if _level == 2 %}letter-spacing:1.2px;text-transform:uppercase;{% endif %}">{{ text }}</h{{ _level }}>
+{%- endif -%}

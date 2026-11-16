@@ -204,12 +204,17 @@ Mistune parser with tables, strikethrough, footnotes, and bare-URL links. It use
 It can be reused sequentially; its mutable state is not intended for concurrent
 rendering. Raw HTML, Outlook conditional comments, and VML are preserved.
 
-The built-in renderer registry contains `default`, `model:fi`, `model:apt`, and
-`model:unfold`, plus the aliases `model-fi`, `model-apt`, and `model-unfold`.
+The built-in renderer registry contains `default`, `model:fi`, `model:apt`,
+`model:unfold`, and `model:isac`, plus the aliases `model-fi`, `model-apt`,
+`model-unfold`, and `model-isac`.
 Names are case-insensitive. An email context such as `{"model": "unfold"}` selects
 the corresponding renderer. Heading comments such as `<!-- model:unfold -->`
 select a renderer for that section and nested headings. Unknown selections are
 ignored; selecting multiple registered renderers at once raises `ValueError`.
+
+The ISAC renderer also recognizes `<!-- layout=cards -->` in a Markdown table
+header. Exactly one body row with one to three columns becomes benefit cards;
+other tables use the normal table renderer. See [ISAC](ISAC.md) for examples.
 
 `RendererGenerator.register(name, creator)` registers or replaces a factory
 globally. The factory accepts `jinja_env` and `context` keyword arguments and
@@ -254,16 +259,27 @@ The historical names `ContextManagment`, `JinjaEnvManagment`, and
 
 ## Outlook integration and command entry points
 
-`pyoutlookmailing.outlook.new_email(conf)` dispatches Outlook and returns an
-unsaved mail item. Optional `conf["from"]` selects an exact, case-insensitive
-SMTP account match; it raises `ValueError` if that account is absent. This helper
-does not fill message content, save, or send.
+`pyoutlookmailing.outlook.new_email(conf)` dispatches Outlook and creates an
+unsaved mail item in the selected account's Drafts folder, using
+`account.DeliveryStore.GetDefaultFolder(16).Items.Add("IPM.Note")`.
+Optional `conf["from"]` selects a unique, case-insensitive SMTP account match
+and takes priority over Outlook's active folder. Without it, the account is
+identified from the active folder's store, falling back only to a sole account.
+Missing or ambiguous accounts and unavailable stores/folders raise `ValueError`.
+COM errors propagate without falling back to another PST.
+
+The returned item has `SendUsingAccount` set to that account,
+`SaveSentMessageFolder` set to its Sent Items folder, and `DeleteAfterSubmit`
+set to `False`. The SMTP address and folder paths are logged. This helper does
+not fill message content, save, or send.
 
 `pyoutlookmailing.outlook.deliver(conf, *, mail_factory=new_email)` implements
 delivery and returns the original configuration unchanged. Tests can inject a
 factory receiving a configuration copy and returning an Outlook-compatible fake
-with recipient, subject, HTML, attachment, `Save`, and `Send` members. Importing
-the module alone does not start Outlook.
+with recipient, subject, HTML, attachment, `Save`, and `Send` members. When an
+implicit sender is selected, the first item's `SendUsingAccount.SmtpAddress`
+pins that sender for the rest of the batch without modifying the input
+configuration. Importing the module alone does not start Outlook.
 
 For `cid:` image references, delivery resolves and deduplicates local files
 before creating any message. It then generates unique ASCII Content-IDs per

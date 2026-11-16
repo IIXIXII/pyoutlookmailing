@@ -216,9 +216,23 @@ At least one recipient must remain after exclusions. With
 `to.individual_email: true`, each remaining To address gets a separate message;
 Cc and Bcc are repeated on every message, and at least one To address is required.
 
-An optional `from` address must match a configured Outlook account's SMTP
-address exactly, ignoring case. A missing match raises an error before a message
-is created. Omitting `from` uses Outlook's default account.
+An optional `from` address must match exactly one configured Outlook account's
+SMTP address, ignoring case. It takes priority over the folder selected in
+Outlook. A missing or ambiguous match raises an error before a message is
+created. Without `from`, the account is identified from the active Outlook
+folder's store. If that is not possible, a sole configured account can be used;
+otherwise processing stops and asks for `from`, instead of choosing an archive
+or guessing between accounts. Individual batches keep the initially selected
+account even if the active Outlook folder changes during processing.
+
+New messages are created directly in that account's **Drafts** folder. The same
+account is explicitly selected for sending, and its **Sent Items** folder is
+selected for the sent copy. The console logs the SMTP account and both folder
+paths. Outlook's profile-wide default store, which may be an unrelated PST,
+does not determine where these new drafts are saved. Existing drafts are not
+moved. A missing account store or required folder stops processing.
+See Microsoft's [account-specific folder lookup](https://learn.microsoft.com/en-us/office/vba/api/outlook.store.getdefaultfolder)
+and [sent-copy destination property](https://learn.microsoft.com/en-us/office/vba/api/outlook.mailitem.savesentmessagefolder).
 
 Recipient and attachment checks happen before the first message is created.
 Messages are saved or sent sequentially. A later Outlook failure does not undo
@@ -226,8 +240,8 @@ earlier deliveries; the application stops and does not retry automatically.
 
 ## Templates, images, and attachments
 
-The wheel includes a basic standalone template. FI, APTITUDE, and UNFOLD templates
-and their images remain in the repository. For a configuration in `mails/`:
+The wheel includes a basic standalone template. FI, APTITUDE, UNFOLD, and ISAC
+templates and their images remain in the repository. For a configuration in `mails/`:
 
 ```yaml
 paths:
@@ -241,10 +255,14 @@ email:
 ```
 
 The outer template receives the prepared `email` fields as its context. `content`
-contains the rendered HTML fragment. Renderer models are `fi`, `apt`, and
-`unfold`; omitting `model` uses the default components. Heading-level renderer
+contains the rendered HTML fragment. Renderer models are `fi`, `apt`, `unfold`,
+and `isac`; omitting `model` uses the default components. Heading-level renderer
 instructions can also select a model, for example `# Heading <!-- model:unfold -->`.
 See [Rendering extensions](API.md#rendering-extensions) for component details.
+
+For the ISAC navy-and-blue design, select `model: isac` and `template: isac.html`.
+See the [ISAC template guide](ISAC.md) for its complete Markdown example,
+benefit cards, contact details, and customization variables.
 
 For a configurable registration button, use
 `[<!-- link-model=button2 -->Register](https://example.org/register)` in its own

@@ -521,6 +521,40 @@ class RendererApt(RendererDefault, ContextManagment):
         ).render(context)
 
 
+class RendererIsac(RendererApt):
+    """Render ISAC typography and optional Markdown benefit cards."""
+
+    template_prefix = "isac"
+
+    # --------------------------------------------------------------------------
+    @staticmethod
+    def generate(**kwargs):
+        """Create an ISAC renderer from jinja_env and context keywords."""
+        return RendererIsac(
+            jinja_env=kwargs["jinja_env"], context=kwargs["context"]
+        )
+
+    # --------------------------------------------------------------------------
+    def link(self, link, title, text):
+        """Keep normal links inline-styled and preserve explicit link models."""
+        context = {**self.context, **read_instructions(text)}
+        context["link"] = {
+            "url": safe_link(link),
+            "name": Markup(strip_xml_comment(text)),
+        }
+        if title is not None:
+            context["link"]["title"] = title
+        template = context.get("link-model", "isac-link-normal") + ".j2"
+        return self.jinja_env.get_template(template).render(context)
+
+    # --------------------------------------------------------------------------
+    def cards(self, entries):
+        """Render a single row of titled benefits as presentation cards."""
+        return self.jinja_env.get_template("isac-cards.j2").render(
+            {**self.context, "entries": entries}
+        )
+
+
 class RendererUnfold(RendererApt):
     """Render UNFOLD components with shared colors and Outlook-compatible
     buttons.
@@ -608,6 +642,8 @@ RendererGenerator.register("model:fi", RendererFi.generate)
 RendererGenerator.register("model-fi", RendererFi.generate)
 RendererGenerator.register("model:apt", RendererApt.generate)
 RendererGenerator.register("model-apt", RendererApt.generate)
+RendererGenerator.register("model:isac", RendererIsac.generate)
+RendererGenerator.register("model-isac", RendererIsac.generate)
 RendererGenerator.register("model:unfold", RendererUnfold.generate)
 RendererGenerator.register("model-unfold", RendererUnfold.generate)
 
@@ -670,13 +706,39 @@ class RendererDispatch(mistune.ClosingHTMLRenderer):
 
     # --------------------------------------------------------------------------
     def render_token(self, token, state):
-        """Render standalone images and button2 links as layout blocks.
+        """Render ISAC cards, standalone images, and button2 layout blocks.
 
         Inspect parsed tokens so linked images are supported and images inside
         text stay inline. Keep button tables out of paragraph tags. Bypass
         justified paragraph templates for image blocks. FI content still needs
         its surrounding table row.
         """
+        component = self.get_renderer()
+        if token["type"] == "table" and isinstance(component, RendererIsac):
+            head, body = token["children"]
+            titles = [
+                self.render_tokens(cell["children"], state)
+                for cell in head["children"]
+            ]
+            if read_instructions("".join(titles)).get("layout") == "cards":
+                rows = body["children"]
+                if len(rows) != 1 or not 1 <= len(titles) <= 3:
+                    raise ValueError(
+                        "ISAC layout=cards attend une ligne de contenu "
+                        "et une à trois colonnes"
+                    )
+                entries = [
+                    {
+                        "title": Markup(strip_xml_comment(title)),
+                        "text": Markup(
+                            self.render_tokens(cell["children"], state)
+                        ),
+                    }
+                    for title, cell in zip(
+                        titles, rows[0]["children"], strict=True
+                    )
+                ]
+                return component.cards(entries)
         if token["type"] not in {"paragraph", "block_text"}:
             return super().render_token(token, state)
         children = token.get("children", [])

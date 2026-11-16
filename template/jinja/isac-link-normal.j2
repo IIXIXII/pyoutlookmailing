@@ -1,0 +1,5 @@
+{%- import 'isac-theme.j2' as theme with context -%}
+{%- if link is defined and link.url -%}
+<a href="{{ link.url }}"{% if link.title is defined %} title="{{ link.title }}"{% endif %}
+   style="color:{{ theme.link }};text-decoration:underline;font-weight:600;"><span style="color:{{ theme.link }};text-decoration:underline;">{{ link.name }}</span></a>
+{%- endif -%}

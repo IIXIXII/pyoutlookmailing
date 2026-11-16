@@ -125,6 +125,7 @@ See the [Python API reference](docs/API.md) for arguments, side effects, and err
 | --- | --- |
 | [Configuration](docs/CONFIGURATION.md) | YAML and embedded Markdown, overrides, recipients, Excel, templates, attachments. |
 | [Common preferences](docs/PREFERENCES.md) | Upref settings, profiles, initialization, priorities, and portable stores. |
+| [ISAC template](docs/ISAC.md) | Navy-and-blue email design, complete Markdown example, benefit cards, and contact panel. |
 | [Python API](docs/API.md) | Public functions, preparation helpers, rendering extensions, and CLI entry points. |
 | [Windows launchers](docs/WINDOWS.md) | `.mailmd` double-click support, file associations, and batch launchers. |
 | [Development](docs/DEVELOPMENT.md) | Pylance setup, quality checks, tests, packaging, and release commands. |
